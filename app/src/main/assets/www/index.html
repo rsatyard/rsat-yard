@@ -106,6 +106,18 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .gate form { display: grid; gap: 10px; }
 .gate label { font-size: 0.82rem; font-weight: 600; color: var(--muted); display: grid; gap: 4px; }
 .gate code { font-family: var(--font-mono); font-size: 0.85rem; background: var(--slot); padding: 1px 5px; border-radius: 4px; }
+.gate .links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.88rem; }
+.msg.ok { background: var(--accent-soft); color: var(--ink); }
+
+/* Accounts (admins) */
+.badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent, #141715); font-size: 0.72rem; font-weight: 700; margin-left: 4px; }
+.acc-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; align-items: end; margin: 10px 0 6px; }
+.acc-add label { font-size: 0.78rem; font-weight: 600; color: var(--muted); display: grid; gap: 4px; }
+.acc-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.acc-status { font-size: 0.78rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--slot); white-space: nowrap; }
+.acc-status.pending { background: var(--accent-soft); }
+.acc-status.disabled { background: var(--bad-soft); color: var(--bad); }
+.update-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
 /* Totals */
 .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
@@ -266,14 +278,42 @@ form.details { display: grid; gap: 8px; }
 <div class="gate" id="login-screen" hidden>
   <div class="panel">
     <div class="brand">RSAT <span>Yard</span></div>
-    <p class="hint">Tank tracking for the RSAT yard. Sign in with the account your admin gave you.</p>
+    <p class="hint" id="login-intro">Tank tracking for the RSAT yard. Sign in with your account.</p>
     <form id="login-form" autocomplete="on">
       <label>Email <input id="login-email" type="email" autocomplete="username" required></label>
       <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit" id="login-btn">Sign in</button>
+      <div class="links"><button type="button" class="linkish" data-mode="reset">Forgot password?</button><button type="button" class="linkish" data-mode="signup">Create account</button></div>
+    </form>
+    <form id="signup-form" autocomplete="on" hidden>
+      <label>Your name <input id="su-name" type="text" autocomplete="name" required></label>
+      <label>Email <input id="su-email" type="email" autocomplete="username" required></label>
+      <label>Password (at least 6 characters) <input id="su-pass" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Repeat password <input id="su-pass2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button class="primary" type="submit" id="su-btn">Create account</button>
+      <p class="hint">An admin approves new accounts before they can see the yard.</p>
+      <div class="links"><button type="button" class="linkish" data-mode="login">Back to sign in</button></div>
+    </form>
+    <form id="reset-form" autocomplete="on" hidden>
+      <label>Email <input id="rs-email" type="email" autocomplete="username" required></label>
+      <button class="primary" type="submit" id="rs-btn">Send reset link</button>
+      <p class="hint">We'll email you a link to choose a new password. Check your spam folder if it doesn't arrive.</p>
+      <div class="links"><button type="button" class="linkish" data-mode="login">Back to sign in</button></div>
     </form>
     <p id="login-msg" class="msg bad" hidden></p>
     <p class="hint" id="apk-link-wrap" hidden><a id="apk-link" href="#">Download the Android app</a></p>
+  </div>
+</div>
+
+<!-- Signed in, but not approved (or first-time setup) -->
+<div class="gate" id="wait-screen" hidden>
+  <div class="panel">
+    <div class="brand">RSAT <span>Yard</span></div>
+    <h2 id="wait-title">Waiting for approval</h2>
+    <p id="wait-text"></p>
+    <button class="primary" type="button" id="claim-btn" hidden>Set me up as the admin</button>
+    <p id="wait-msg" class="msg bad" hidden></p>
+    <button type="button" id="wait-logout">Sign out</button>
   </div>
 </div>
 
@@ -283,11 +323,12 @@ form.details { display: grid; gap: 8px; }
     <div class="topbar-inner">
       <div class="brand">RSAT <span>Yard</span></div>
       <span class="sync wait" id="sync-state">Connecting…</span>
-      <div class="me"><span id="me-name"></span><button type="button" id="logout-btn">Sign out</button></div>
+      <div class="me"><span id="me-name"></span><button type="button" id="acc-btn" hidden>Accounts<span class="badge" id="acc-badge" hidden></span></button><button type="button" id="logout-btn">Sign out</button></div>
     </div>
   </div>
 
   <div class="wrap">
+    <div id="update-bar" class="msg info update-bar" hidden><span id="update-text"></span><a class="primary small" id="update-link" href="#" style="text-decoration:none;padding:6px 12px;border-radius:8px">Download update</a></div>
     <p id="banner" class="msg info" hidden></p>
     <div class="stats" id="stats" role="group" aria-label="Yard totals"></div>
 
@@ -410,6 +451,21 @@ form.details { display: grid; gap: 8px; }
       </div>
       <p id="dl-msg" class="msg" hidden style="margin-top:10px"></p>
     </section>
+
+    <section class="panel" aria-labelledby="acc-title" id="acc-panel" hidden>
+      <h2 id="acc-title">Accounts</h2>
+      <p class="hint">Only approved accounts can see the yard. Staff can record and change tanks; admins can also manage accounts here.</p>
+      <form class="acc-add" id="acc-form" autocomplete="off">
+        <label>Name <input id="acc-name" type="text" required></label>
+        <label>Email <input id="acc-email" type="email" required></label>
+        <label>Password (optional) <input id="acc-pass" type="text" minlength="6" placeholder="Leave empty: they create it"></label>
+        <label>Role <select id="acc-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></label>
+        <button class="primary" type="submit" id="acc-add-btn">Add account</button>
+      </form>
+      <p class="hint">With a password, the account is ready to sign in. Without one, the person taps <b>Create account</b> with this email and gets in straight away.</p>
+      <p id="acc-msg" class="msg" hidden style="margin-top:10px"></p>
+      <div class="table-scroll"><table id="acc-table"></table></div>
+    </section>
   </div>
 
   <button class="primary fab" type="button" id="fab">Scan</button>
@@ -423,6 +479,7 @@ form.details { display: grid; gap: 8px; }
 </div>
 
 <script src="firebase-config.js"></script>
+<script src="version.js"></script>
 <script src="lib/firebase-app-compat.js"></script>
 <script src="lib/firebase-auth-compat.js"></script>
 <script src="lib/firebase-firestore-compat.js"></script>
@@ -1224,7 +1281,175 @@ function setSync() {
   el.textContent = text;
 }
 function show(screen) {
-  ["setup-screen", "login-screen", "app"].forEach(id => { $(id).hidden = id !== screen; });
+  ["setup-screen", "login-screen", "wait-screen", "app"].forEach(id => { $(id).hidden = id !== screen; });
+}
+function waitScreen(title, text, claim) {
+  $("wait-title").textContent = title;
+  $("wait-text").textContent = text;
+  $("claim-btn").hidden = !claim;
+  setMsg($("wait-msg"), "");
+  show("wait-screen");
+}
+function loginMode(mode) {
+  const typed = $("login-email").value || $("su-email").value || $("rs-email").value;
+  ["login-email", "su-email", "rs-email"].forEach(id => { if (!$(id).value) $(id).value = typed; });
+  $("login-form").hidden = mode !== "login";
+  $("signup-form").hidden = mode !== "signup";
+  $("reset-form").hidden = mode !== "reset";
+  $("login-intro").textContent = mode === "signup" ? "Create an account for the RSAT yard app."
+    : mode === "reset" ? "Forgot your password? Enter your email and we'll send you a link to choose a new one."
+    : "Tank tracking for the RSAT yard. Sign in with your account.";
+  setMsg($("login-msg"), "");
+}
+const emailKey = e => String(e || "").trim().toLowerCase();
+function authError(err) {
+  const c = (err && err.code) || "";
+  if (c.includes("network")) return "No connection. Connect to the internet and try again.";
+  if (c.includes("too-many")) return "Too many attempts. Wait a few minutes and try again.";
+  if (c.includes("email-already-in-use")) return "An account with this email already exists. Sign in, or tap Forgot password.";
+  if (c.includes("weak-password")) return "Choose a password with at least 6 characters.";
+  if (c.includes("invalid-email")) return "That email address doesn't look right.";
+  if (c.includes("operation-not-allowed") || c.includes("admin-restricted")) return "New accounts are turned off. Ask your admin to add you.";
+  return "Email or password is wrong. Check them, or tap Forgot password.";
+}
+
+// ---------- Accounts ----------
+// Each login has a record in "users" (id = lower-case email): role admin | staff, status pending | active | disabled.
+// The database rules only let active accounts see tanks, and only admins manage accounts.
+let profile = null, profUnsub = null, usersUnsub = null, accounts = [], ownerEmail = "", signupName = "", askedFor = null;
+const ROLE = { staff: "Staff", admin: "Admin" };
+const ACC_STATUS = { pending: "Waiting for approval", active: "Active", disabled: "Turned off" };
+const accMsg = $("acc-msg");
+
+function stopApp() {
+  if (unsub) { unsub(); unsub = null; }
+  if (usersUnsub) { usersUnsub(); usersUnsub = null; }
+  tanks = new Map(); accounts = [];
+}
+function startApp(u) {
+  show("app");
+  $("me-name").textContent = profile.name || person(u.email);
+  dataState = "connecting";
+  setSync(); renderData();
+  unsub = fdb.collection("tanks").onSnapshot({ includeMetadataChanges: true }, snap => {
+    tanks = new Map(snap.docs.map(d => [d.id, d.data()]));
+    dataState = snap.metadata.hasPendingWrites ? "pending" : snap.metadata.fromCache ? "cached" : "synced";
+    setSync(); renderData();
+  }, err => {
+    dataState = "error";
+    setMsg($("banner"), err.code === "permission-denied"
+      ? "Your account can't read tank records. Ask your admin to check your account and the database rules."
+      : "Tank records stopped updating. Sign out and back in.", "bad");
+    setSync(); renderData();
+  });
+  checkForUpdate();
+}
+async function onProfile(u, snap) {
+  if (me !== u) return;
+  const p = snap.exists ? snap.data() : null;
+  if (!p) {
+    if (profile) stopApp();
+    profile = null;
+    if (snap.metadata.fromCache) { waitScreen("Connecting…", "Connect to the internet to finish signing in.", false); return; }
+    if (askedFor === u.uid) return;
+    askedFor = u.uid;
+    try {
+      const owner = await fdb.collection("config").doc("owner").get();
+      if (me !== u) return;
+      if (!owner.exists) {
+        waitScreen("First-time setup", `No admin is set up yet. If you manage this app, make ${u.email} the admin. You can then add and approve the other accounts.`, true);
+        return;
+      }
+      // Ask for access: the snapshot fires again with this pending record.
+      await fdb.collection("users").doc(emailKey(u.email)).set({
+        email: emailKey(u.email), name: signupName || u.displayName || person(u.email),
+        role: "staff", status: "pending", createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      waitScreen("Can't check your account", err.code === "permission-denied"
+        ? "The database rules are out of date. Ask your admin to publish the latest rules (README step 3)."
+        : "Check your connection, then sign out and back in.", false);
+    }
+    return;
+  }
+  if (p.status !== "active") {
+    if (profile && profile.status === "active") stopApp();
+    profile = p;
+    if (p.status === "disabled") waitScreen("Account turned off", "An admin has turned off this account. Ask your admin if you need access again.", false);
+    else waitScreen("Waiting for approval", `Thanks, ${p.name || person(u.email)}. An admin needs to approve your account before you can see the yard. The app opens by itself as soon as they do.`, false);
+    return;
+  }
+  const wasActive = profile && profile.status === "active";
+  profile = p;
+  if (!wasActive) startApp(u);
+  else $("me-name").textContent = p.name || person(u.email);
+  setAdmin(p.role === "admin");
+}
+function setAdmin(on) {
+  $("acc-btn").hidden = !on;
+  $("acc-panel").hidden = !on;
+  if (on && !usersUnsub) {
+    usersUnsub = fdb.collection("users").onSnapshot(snap => {
+      accounts = snap.docs.map(d => d.data());
+      renderAccounts();
+    }, () => setMsg(accMsg, "Couldn't load the accounts. Sign out and back in.", "bad"));
+    fdb.collection("config").doc("owner").get().then(d => { ownerEmail = d.exists ? d.data().email : ""; renderAccounts(); }).catch(() => {});
+  }
+  if (!on && usersUnsub) { usersUnsub(); usersUnsub = null; }
+}
+function renderAccounts() {
+  const pending = accounts.filter(a => a.status === "pending").length;
+  $("acc-badge").hidden = !pending;
+  $("acc-badge").textContent = pending;
+  const order = { pending: 0, active: 1, disabled: 2 };
+  const mine = emailKey(me && me.email);
+  const rows = accounts.slice().sort((a, b) => (order[a.status] - order[b.status]) || (a.name || a.email).localeCompare(b.name || b.email));
+  $("acc-table").innerHTML = `<thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(a => {
+    const e = esc(a.email);
+    const locked = a.email === mine || a.email === ownerEmail;
+    let actions;
+    if (locked) actions = `<span class="hint">${a.email === mine ? "You" : "Owner"}</span>`;
+    else if (a.status === "pending") actions = `<button type="button" class="small primary" data-acc="approve" data-email="${e}">Approve</button><button type="button" class="small danger" data-acc="delete" data-email="${e}">Reject</button>`;
+    else actions = `<button type="button" class="small" data-acc="reset" data-email="${e}">Send password reset</button>` + (a.status === "active"
+      ? `<button type="button" class="small danger" data-acc="disable" data-email="${e}">Turn off</button>`
+      : `<button type="button" class="small" data-acc="enable" data-email="${e}">Turn on</button><button type="button" class="small danger" data-acc="delete" data-email="${e}">Delete</button>`);
+    const role = locked ? esc(ROLE[a.role] || a.role)
+      : `<select data-acc-role="${e}" aria-label="Role for ${e}">${Object.keys(ROLE).map(r => `<option value="${r}"${r === a.role ? " selected" : ""}>${ROLE[r]}</option>`).join("")}</select>`;
+    return `<tr><td>${esc(a.name || "")}</td><td>${e}</td><td>${role}</td><td><span class="acc-status ${esc(a.status)}">${esc(ACC_STATUS[a.status] || a.status)}</span></td><td><div class="acc-actions">${actions}</div></td></tr>`;
+  }).join("")}</tbody>`;
+}
+function updateAccount(email, change, okText) {
+  const a = accounts.find(x => x.email === email);
+  if (!a) return;
+  fdb.collection("users").doc(email).set(Object.assign({}, a, change, { updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) }))
+    .then(() => setMsg(accMsg, okText, "info"))
+    .catch(() => setMsg(accMsg, "That change didn't save. Check your connection and try again.", "bad"));
+}
+// A second Firebase app creates logins, so the admin stays signed in.
+let creator = null;
+async function createLogin(email, pass) {
+  if (!creator) {
+    creator = firebase.initializeApp(cfg, "creator");
+    await creator.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+  }
+  await creator.auth().createUserWithEmailAndPassword(email, pass);
+  await creator.auth().signOut();
+}
+// The Android app checks GitHub for a newer APK (version.js is written by the cloud build).
+function checkForUpdate() {
+  if (!window.AndroidBridge || !window.UPDATE_REPO || !window.APP_BUILD) return;
+  fetch(`https://api.github.com/repos/${window.UPDATE_REPO}/releases/latest`)
+    .then(r => r.ok ? r.json() : null)
+    .then(rel => {
+      if (!rel) return;
+      const n = Number(String(rel.tag_name || "").split(".").pop());
+      const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name));
+      if (!(n > window.APP_BUILD) || !apk) return;
+      $("update-text").textContent = `A new version of the app is ready (1.0.${n}). You have 1.0.${window.APP_BUILD}.`;
+      $("update-link").href = apk.browser_download_url;
+      $("update-bar").hidden = false;
+    })
+    .catch(() => { /* offline: check again next time */ });
 }
 
 renderChips();
@@ -1241,43 +1466,118 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
 
   auth.onAuthStateChanged(u => {
     me = u;
-    if (unsub) { unsub(); unsub = null; }
-    if (!u) { tanks = new Map(); dataState = "connecting"; show("login-screen"); return; }
-    show("app");
-    $("me-name").textContent = person(u.email);
-    dataState = "connecting";
-    setSync(); renderData();
-    unsub = fdb.collection("tanks").onSnapshot({ includeMetadataChanges: true }, snap => {
-      tanks = new Map(snap.docs.map(d => [d.id, d.data()]));
-      dataState = snap.metadata.hasPendingWrites ? "pending" : snap.metadata.fromCache ? "cached" : "synced";
-      setSync(); renderData();
-    }, err => {
-      dataState = "error";
-      setMsg($("banner"), err.code === "permission-denied"
-        ? "Your account can't read tank records. Ask your admin to check the database rules (README step 3)."
-        : "Tank records stopped updating. Sign out and back in.", "bad");
-      setSync(); renderData();
+    if (profUnsub) { profUnsub(); profUnsub = null; }
+    stopApp();
+    profile = null;
+    $("update-bar").hidden = true;
+    if (!u) { dataState = "connecting"; askedFor = null; setAdmin(false); show("login-screen"); return; }
+    waitScreen("Signing in…", "Checking your account.", false);
+    profUnsub = fdb.collection("users").doc(emailKey(u.email)).onSnapshot({ includeMetadataChanges: true }, snap => onProfile(u, snap), err => {
+      waitScreen("Can't check your account", err.code === "permission-denied"
+        ? "The database rules are out of date. Ask your admin to publish the latest rules (README step 3)."
+        : "Check your connection, then sign out and back in.", false);
     });
   });
 
-  $("login-form").addEventListener("submit", async e => {
-    e.preventDefault();
-    const btn = $("login-btn");
+  document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => loginMode(b.dataset.mode)));
+  async function busy(btn, work) {
     btn.disabled = true;
     setMsg($("login-msg"), "");
-    try {
-      await auth.signInWithEmailAndPassword($("login-email").value.trim(), $("login-pass").value);
-    } catch (err) {
-      const c = err.code || "";
-      setMsg($("login-msg"),
-        c.includes("network") ? "No connection. Connect to the internet for the first sign-in."
-        : c.includes("too-many") ? "Too many attempts. Wait a few minutes and try again."
-        : "Email or password is wrong. Check them, or ask your admin to reset your password.", "bad");
-    } finally {
-      btn.disabled = false;
-    }
+    try { await work(); } catch (err) { setMsg($("login-msg"), authError(err), "bad"); } finally { btn.disabled = false; }
+  }
+  $("login-form").addEventListener("submit", e => {
+    e.preventDefault();
+    busy($("login-btn"), () => auth.signInWithEmailAndPassword($("login-email").value.trim(), $("login-pass").value));
+  });
+  $("signup-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if ($("su-pass").value !== $("su-pass2").value) { setMsg($("login-msg"), "The two passwords don't match.", "bad"); return; }
+    signupName = $("su-name").value.trim();
+    busy($("su-btn"), async () => {
+      const cred = await auth.createUserWithEmailAndPassword($("su-email").value.trim(), $("su-pass").value);
+      cred.user.updateProfile({ displayName: signupName }).catch(() => {});
+    });
+  });
+  $("reset-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const email = $("rs-email").value.trim();
+    busy($("rs-btn"), async () => {
+      try { await auth.sendPasswordResetEmail(email); }
+      catch (err) { if (!String(err.code).includes("user-not-found")) throw err; }
+      // Same answer either way, so the form doesn't reveal who has an account.
+      setMsg($("login-msg"), `If ${email} has an account, a reset link is on its way. Open it, choose a new password, then sign in here. Check your spam folder if it doesn't arrive.`, "ok");
+    });
   });
   $("logout-btn").addEventListener("click", () => auth.signOut());
+  $("wait-logout").addEventListener("click", () => auth.signOut());
+
+  $("claim-btn").addEventListener("click", async () => {
+    const btn = $("claim-btn"), email = emailKey(me.email), now = new Date().toISOString();
+    const batch = fdb.batch();
+    batch.set(fdb.collection("users").doc(email), { email, name: me.displayName || person(email), role: "admin", status: "active", createdAt: now });
+    batch.set(fdb.collection("config").doc("owner"), { email, at: now });
+    btn.disabled = true;
+    try { await batch.commit(); }
+    catch (err) {
+      setMsg($("wait-msg"), err.code === "permission-denied"
+        ? "Couldn't set you up as admin. Someone else may already be the admin, or the database rules are out of date."
+        : "That didn't save. Check your connection and try again.", "bad");
+    } finally { btn.disabled = false; }
+  });
+
+  $("acc-btn").addEventListener("click", () => $("acc-panel").scrollIntoView({ behavior: "smooth" }));
+  $("acc-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = $("acc-add-btn"), email = emailKey($("acc-email").value), name = $("acc-name").value.trim();
+    const pass = $("acc-pass").value, role = $("acc-role").value, now = new Date().toISOString();
+    if (accounts.some(a => a.email === email)) { setMsg(accMsg, `${email} is already in the list below. Approve it or change it there.`, "bad"); return; }
+    btn.disabled = true;
+    let note;
+    try {
+      if (pass) {
+        try { await createLogin(email, pass); note = " They can sign in now with the password you set."; }
+        catch (err) {
+          if (!String(err.code).includes("email-already-in-use")) throw err;
+          note = " This email already had a login, so their current password still works. They can also tap Forgot password.";
+        }
+      } else {
+        note = ` Ask them to tap Create account with ${email} and choose a password.`;
+      }
+      await fdb.collection("users").doc(email).set({ email, name, role, status: "active", createdAt: now, updatedAt: now, updatedBy: emailKey(me.email) });
+      setMsg(accMsg, `Added ${name}.` + note, "info");
+      $("acc-form").reset();
+    } catch (err) {
+      const c = String(err.code || "");
+      setMsg(accMsg, c.includes("admin-restricted") || c.includes("operation-not-allowed")
+        ? "Firebase blocks new logins. In Firebase, open Authentication > Settings > User actions and tick Enable create (sign-up). Or leave the password empty."
+        : c.startsWith("auth/") ? authError(err) : "The account couldn't be added. Check your connection and try again.", "bad");
+    } finally { btn.disabled = false; }
+  });
+  $("acc-table").addEventListener("change", e => {
+    const email = e.target.dataset.accRole;
+    if (email) updateAccount(email, { role: e.target.value }, `${email} is now ${ROLE[e.target.value]}.`);
+  });
+  $("acc-table").addEventListener("click", e => {
+    const b = e.target.closest("[data-acc]");
+    if (!b) return;
+    const email = b.dataset.email, act = b.dataset.acc;
+    if (act === "approve") updateAccount(email, { status: "active" }, `Approved ${email}. They can use the app now.`);
+    if (act === "disable") updateAccount(email, { status: "disabled" }, `Turned off ${email}. They can't see the yard any more.`);
+    if (act === "enable") updateAccount(email, { status: "active" }, `Turned ${email} back on.`);
+    if (act === "reset") auth.sendPasswordResetEmail(email)
+      .then(() => setMsg(accMsg, `Sent a password reset link to ${email}.`, "info"))
+      .catch(err => setMsg(accMsg, authError(err), "bad"));
+    if (act === "delete") {
+      if (!b.classList.contains("armed")) {
+        b.classList.add("armed"); b.textContent = "Tap again to confirm";
+        setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); renderAccounts(); } }, 4000);
+        return;
+      }
+      fdb.collection("users").doc(email).delete()
+        .then(() => setMsg(accMsg, `Removed ${email}. If they sign in again, they'll have to ask for access.`, "info"))
+        .catch(() => setMsg(accMsg, "That account couldn't be removed. Try again.", "bad"));
+    }
+  });
 }
 </script>
 </body>

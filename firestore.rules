@@ -1,9 +1,48 @@
 rules_version = '2';
-// Only signed-in staff (accounts you create in Firebase Authentication) can read or change tank records.
+// Only approved accounts can see or change tank records.
+// Anyone may create a login, but it stays "pending" until an admin approves it in the app.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function myDoc() { return /databases/$(database)/documents/users/$(myEmail()); }
+    function ownerDoc() { return /databases/$(database)/documents/config/owner; }
+    function active() { return signedIn() && exists(myDoc()) && get(myDoc()).data.status == 'active'; }
+    function isAdmin() { return active() && get(myDoc()).data.role == 'admin'; }
+    function validProfile(d) {
+      return d.keys().hasOnly(['email', 'name', 'role', 'status', 'createdAt', 'updatedAt', 'updatedBy'])
+        && d.role in ['admin', 'staff'] && d.status in ['pending', 'active', 'disabled'];
+    }
+
     match /tanks/{tank} {
-      allow read, write: if request.auth != null && request.auth.token.email != null;
+      allow read, write: if active();
+    }
+
+    match /users/{email} {
+      allow get: if isAdmin() || (signedIn() && email == myEmail());
+      allow list: if isAdmin();
+      allow create: if validProfile(request.resource.data) && request.resource.data.email == email && (
+        isAdmin()
+        // A new login asks for access: its own record, pending, staff.
+        || (signedIn() && email == myEmail()
+            && request.resource.data.status == 'pending' && request.resource.data.role == 'staff')
+        // First-time setup: the first person to claim the app becomes its admin.
+        || (signedIn() && email == myEmail() && !exists(ownerDoc())
+            && getAfter(ownerDoc()).data.email == myEmail()
+            && request.resource.data.status == 'active' && request.resource.data.role == 'admin')
+      );
+      // Admins manage everyone except themselves and the owner, so nobody locks the app out.
+      allow update: if isAdmin() && email != myEmail() && validProfile(request.resource.data)
+        && request.resource.data.email == email && email != get(ownerDoc()).data.email;
+      allow delete: if isAdmin() && email != myEmail() && email != get(ownerDoc()).data.email;
+    }
+
+    match /config/owner {
+      allow get: if signedIn();
+      allow create: if signedIn() && !exists(ownerDoc())
+        && request.resource.data.keys().hasOnly(['email', 'at'])
+        && request.resource.data.email == myEmail()
+        && getAfter(myDoc()).data.role == 'admin';
     }
   }
 }

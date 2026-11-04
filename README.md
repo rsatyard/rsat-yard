@@ -22,9 +22,8 @@ Setup takes about 30 minutes, once. You need two free accounts: **Firebase** (Go
 
 1. In the Firebase console, open **Build > Authentication > Get started**.
 2. Under **Sign-in method**, enable **Email/Password** and save.
-3. Under **Users**, click **Add user** for each person (yard staff and office). Give each one their email and a password.
-   - To remove someone's access later, disable or delete their user here.
-4. Under **Settings > User actions**, untick **Enable create (sign-up)** and save, so only the accounts you add can sign in.
+3. Under **Settings > User actions**, keep **Enable create (sign-up)** ticked. New logins can't see anything until an admin approves them in the app.
+4. The first person to sign in to the app gets a **Set me up as the admin** button. After that, manage everyone in the app under **Accounts**: add people, approve requests, change roles, turn accounts off and send password resets.
 
 ## Step 3: Create the tank database and lock it down
 
@@ -70,7 +69,7 @@ The phone must be online for the first sign-in. After that the app opens and rec
 
 Edit the files and upload them to the GitHub repository again. Every upload rebuilds the website and a new APK.
 
-**Updating the phone app:** cloud builds are signed with a temporary key. To install a new APK, first **uninstall** the old RSAT Yard app, then install the new one. No tank data is lost, because the data lives in Firebase, not on the phone. To update without uninstalling, add a fixed signing key as GitHub secrets (`SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`); the build uses it automatically.
+**Updating the phone app:** with the fixed signing key set up as GitHub secrets (`SIGNING_KEYSTORE_BASE64` and `SIGNING_STORE_PASSWORD`), each new APK installs over the old one. The app shows **A new version of the app is ready** with a download button when a newer build is on GitHub. Without the key, builds use a temporary key and the old app must be uninstalled first. No tank data is lost either way, because the data lives in Firebase. Keep the key file and its password private and backed up, and never upload them to GitHub.
 
 ## What's in this folder
 

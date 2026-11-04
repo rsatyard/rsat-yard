@@ -9,6 +9,8 @@ window.FIREBASE_CONFIG = {
   appId: "1:174871716184:web:bfdf9b2a66fdc31e02c52d",
 };
 
-// Optional: link shown on the website so staff can download the Android app.
-// After your first GitHub build this is https://github.com/<your-user>/<repo>/releases/latest/download/RSAT-Yard.apk
-window.APK_URL = "";
+// Link shown on the website so staff can download the Android app.
+window.APK_URL = "https://github.com/rsatyard/rsat-yard/releases/latest/download/RSAT-Yard.apk";
+
+// GitHub repository the Android app checks for a newer version.
+window.UPDATE_REPO = "rsatyard/rsat-yard";
