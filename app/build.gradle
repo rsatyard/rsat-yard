@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 34
         // CI passes the build number so each APK installs as an update.
-        versionCode (System.getenv('VERSION_CODE') ?: '1').toInteger()
-        versionName "1.0." + (System.getenv('VERSION_CODE') ?: '1')
+        versionCode = Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName = "1.0." + (System.getenv('VERSION_CODE') ?: '1')
     }
 
     signingConfigs {
@@ -31,7 +31,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig System.getenv('SIGNING_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
+            signingConfig = System.getenv('SIGNING_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
         }
     }
 
