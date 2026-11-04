@@ -1,0 +1,9 @@
+rules_version = '2';
+// Only signed-in staff (accounts you create in Firebase Authentication) can read or change tank records.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tanks/{tank} {
+      allow read, write: if request.auth != null && request.auth.token.email != null;
+    }
+  }
+}

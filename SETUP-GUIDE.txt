@@ -1,0 +1,136 @@
+RSAT YARD - FULL SETUP GUIDE
+============================
+Android app (APK) for yard staff + office website with Excel export.
+Both use the same Firebase database. Only people you add can sign in.
+
+
+------------------------------------------------------------
+PART A - FIREBASE (database + logins)        [ALREADY DONE]
+------------------------------------------------------------
+Console: https://console.firebase.google.com
+Project: rsat-yard-ceac2
+
+Your firebaseConfig (already inside app/src/main/assets/www/firebase-config.js):
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBG2lO3qQt5Jl6rT6WF15vCn3Izr5YWxQM",
+    authDomain: "rsat-yard-ceac2.firebaseapp.com",
+    projectId: "rsat-yard-ceac2",
+    storageBucket: "rsat-yard-ceac2.firebasestorage.app",
+    messagingSenderId: "174871716184",
+    appId: "1:174871716184:web:bfdf9b2a66fdc31e02c52d"
+  };
+
+(These values are not a password. Access is protected by sign-in and the rules below.)
+
+A1. Create project
+    - Create a project "rsat-yard". Turn Gemini and Google Analytics OFF.
+    - If your work email is not a Google account: Create account >
+      "Use your existing email", or make a new Gmail for the yard.
+
+A2. Add the web app
+    - Project home > "+ Add app" > Web (</>) > nickname "RSAT Yard"
+      > leave Hosting unticked > Register app.
+    - Find it again later: gear icon > Project settings > General >
+      Your apps > RSAT Yard > Config.
+
+A3. Email + password login
+    - Menu (three lines, top left) > Build > Authentication > Get started
+    - Sign-in method tab > Email/Password > first toggle ON > Save
+    - Users tab > Add user (email + password, min 6 characters) for each person
+    - Settings tab > User actions > UNTICK "Enable create (sign-up)" > Save
+      (so only people you add can sign in)
+
+    Manage people later (Authentication > Users > three dots next to a user):
+    - Remove access:     Disable account  or  Delete account
+    - Forgot password:   Reset password
+    - Staff do NOT need Google accounts. Any email works (e.g. name@rsatalke.com).
+
+A4. Database
+    - Build > Firestore Database > Create database
+    - Database ID: (default). Pick the closest location (cannot change later).
+    - Start in PRODUCTION mode > Create
+    - Rules tab > delete everything > paste the rules below > Publish
+
+---------- FIRESTORE RULES (copy from here) ----------
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tanks/{tank} {
+      allow read, write: if request.auth != null && request.auth.token.email != null;
+    }
+  }
+}
+---------- (to here) ----------
+
+
+------------------------------------------------------------
+PART B - GITHUB (builds the APK + hosts the website)
+------------------------------------------------------------
+B1. Account
+    - https://github.com > Sign up. Remember your USERNAME (used in links).
+
+B2. Repository
+    - Top right "+" > New repository
+    - Name: rsat-yard
+    - Visibility: Public (needed for free website hosting; tank data stays
+      private in Firebase behind the login)
+    - Create repository
+
+B3. Upload the files
+    - Unzip rsat-yard-android.zip (right-click > Extract All).
+    - Open the extracted folder: you should see .github, app, build.gradle,
+      firestore.rules, README.md, SETUP-GUIDE.txt ...
+    - On GitHub click "uploading an existing file".
+    - Select everything INSIDE the folder (Ctrl+A) and drag it onto the page.
+    - Wait for all files to load > Commit changes.
+    - CHECK: the repository must show a ".github" folder. If missing:
+        Add file > Create new file > name:  .github/workflows/build.yml
+        > paste the contents of that file (open it in Notepad) > Commit changes
+
+B4. Turn on the website
+    - Settings > Pages > Build and deployment > Source: GitHub Actions
+
+B5. Wait for the build
+    - Actions tab > "Build app and website" (about 5 minutes)
+    - Yellow dot = running, green tick = done.
+    - Red X: open the run > "Re-run all jobs". Still red? Send a screenshot.
+
+
+------------------------------------------------------------
+PART C - INSTALL AND OPEN
+------------------------------------------------------------
+Replace YOUR-NAME with your GitHub username.
+
+APK for Android (open on the phone in Chrome):
+  https://github.com/YOUR-NAME/rsat-yard/releases/latest/download/RSAT-Yard.apk
+
+  1. Tap the downloaded file. Allow "Install unknown apps" for Chrome if asked.
+  2. Open RSAT Yard > sign in with an email/password you added in Firebase.
+  3. Allow camera when you first tap Scan.
+  The first sign-in needs internet. After that it works offline and syncs later.
+
+Office website (any computer):
+  https://YOUR-NAME.github.io/rsat-yard/
+
+Optional: put the APK link into window.APK_URL in
+app/src/main/assets/www/firebase-config.js and upload that file again.
+The website sign-in page then shows "Download the Android app".
+
+
+------------------------------------------------------------
+UPDATING LATER
+------------------------------------------------------------
+- Edit files and upload them to the GitHub repository again.
+  Every upload rebuilds the website and a new APK.
+- To install a new APK: UNINSTALL the old RSAT Yard app first, then install
+  the new one. No data is lost (data lives in Firebase, not on the phone).
+
+
+------------------------------------------------------------
+YARD RULES IN THE APP
+------------------------------------------------------------
+- 312 slots. Each slot holds 5 tanks; A11, B11, C11, M15, N15, O15 hold 4.
+- Zones 11-15 have 3 rows.
+- Status: Loaded / Empty clean / Empty dirty. Gate in / Gate out.
+- Excel export default columns: Tank number, Customer, Status, Date in, Date out.
