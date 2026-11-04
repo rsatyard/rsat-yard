@@ -35,21 +35,24 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "$KEYSTORE_B64" | base64 -d --ignore-garbage > "$RUNNER_TEMP/release.p12"
+            ALIAS=$(keytool -list -v -storetype PKCS12 -keystore "$RUNNER_TEMP/release.p12" -storepass "$STORE_PASSWORD" | sed -n 's/^Alias name: //p' | head -n 1)
+            if [ -z "$ALIAS" ]; then echo "The signing key or its password is wrong. Check the two SIGNING_ secrets."; exit 1; fi
             {
-              echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.jks"
+              echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.p12"
               echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD"
-              echo "SIGNING_KEY_ALIAS=$KEY_ALIAS"
-              echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD"
+              echo "SIGNING_KEY_ALIAS=$ALIAS"
+              echo "SIGNING_KEY_PASSWORD=$STORE_PASSWORD"
             } >> "$GITHUB_ENV"
             echo "Signing with the fixed key."
           else
             echo "No signing key set up: using a debug key (uninstall the old app before installing a new build)."
           fi
+
+      - name: Stamp the build number into the app
+        run: echo "window.APP_BUILD = ${{ github.run_number }};" > app/src/main/assets/www/version.js
 
       - name: Build APK
         env:
