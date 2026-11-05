@@ -277,8 +277,14 @@ form.details { display: grid; gap: 8px; }
 .camera footer { padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); font-size: 0.9rem; text-align: center; color: #ddd; }
 #cam-err { color: #ffb4a6; }
 .camera footer .linkish { color: #fff; margin-top: 8px; }
-.ocr-view { position: relative; overflow: hidden; display: grid; place-items: center; }
-.ocr-view video { width: 100%; height: 100%; object-fit: cover; }
+.ocr-view { position: relative; overflow: hidden; display: grid; place-items: center; touch-action: none; }
+.ocr-view video { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+/* Zoom: buttons and slider over the bottom of the camera picture; pinch also works. */
+.ocr-zoom { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(92%, 420px); display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 999px; background: rgba(0,0,0,0.6); z-index: 2; }
+.ocr-zoom button { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 0; background: #fff; color: #000; font: 700 1.4rem/1 var(--font-display); padding: 0; }
+.ocr-zoom input { flex: 1; min-width: 0; accent-color: var(--accent); height: 28px; }
+.ocr-zoom output { min-width: 3.4em; text-align: right; font: 700 0.95rem var(--font-mono); color: #fff; }
 .ocr-guide { position: absolute; left: 5%; right: 5%; top: 25%; bottom: 25%; border: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
 /* Confirm a scanned tank number */
 .confirm { display: grid; place-items: center; background: rgba(0,0,0,0.6); padding: 16px; grid-template-rows: none; }
@@ -515,7 +521,13 @@ form.details { display: grid; gap: 8px; }
 <!-- Camera -->
 <div class="camera" id="camera" hidden>
   <header><b id="cam-title">Scan tank number</b><button type="button" id="cam-close">Close</button></header>
-  <div id="ocr-view" class="ocr-view"><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div></div>
+  <div id="ocr-view" class="ocr-view"><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div>
+    <div class="ocr-zoom" role="group" aria-label="Camera zoom">
+      <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+      <input type="range" id="zoom-range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+      <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+      <output id="zoom-val">1.0×</output>
+    </div></div>
   <footer><span id="cam-hint">Fit the tank number inside the yellow frame.</span><br><span id="cam-err"></span><br>
     <button type="button" class="linkish" id="cam-type">Type the number instead</button></footer>
 </div>
@@ -1060,8 +1072,12 @@ const OCR_PASSES = [["11", OCR_CROP, 700], ["11", OCR_CROP, 1000], ["3", OCR_CRO
 // Part of the camera picture, greyed and sharpened for reading.
 function ocrFrame(video, box, maxW) {
   const vw = video.videoWidth, vh = video.videoHeight;
-  const sx = vw * box[0], sy = vh * box[1], sw = vw * (box[2] - box[0]), sh = vh * (box[3] - box[1]);
-  const scale = Math.min(1, maxW / sw);
+  // With screen zoom, only the middle 1/zoom of the picture is on screen, so read just that part.
+  const z = zoom.mode === "digital" ? zoom.value : 1;
+  const b = box.map(v => 0.5 + (v - 0.5) / z);
+  const sx = vw * b[0], sy = vh * b[1], sw = vw * (b[2] - b[0]), sh = vh * (b[3] - b[1]);
+  // Small (zoomed-in) areas are enlarged up to 3 times so the letters are big enough to read.
+  const scale = Math.min(z > 1 ? 3 : 1, maxW / sw);
   const c = document.createElement("canvas");
   c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
   const g = c.getContext("2d");
@@ -1082,6 +1098,7 @@ async function openTankCamera(target) {
     if (run !== ocrRun) { ocrStream.getTracks().forEach(t => t.stop()); return; }
     video.srcObject = ocrStream;
     await video.play();
+    setupZoom();
   } catch (err) {
     $("cam-err").textContent = "The camera didn't start. Allow camera access for RSAT Yard in your phone settings, then try again.";
     return;
@@ -1099,7 +1116,7 @@ async function openTankCamera(target) {
   while (run === ocrRun && !camera.hidden) {
     if (!video.videoWidth) { await new Promise(r => setTimeout(r, 200)); continue; }
     $("cam-hint").textContent = tries < 8 ? "Reading… fit the tank number inside the yellow frame and hold steady."
-      : "Still looking. Move closer so the number fills the frame, and avoid glare.";
+      : "Still looking. Zoom in (+ or pinch) or move closer so the number fills the frame, and avoid glare.";
     const [psm, box, maxW] = OCR_PASSES[tries % OCR_PASSES.length];
     await w.setParameters({ tessedit_pageseg_mode: psm });
     const { data } = await w.recognize(ocrFrame(video, box, maxW));
@@ -1119,6 +1136,62 @@ async function openTankCamera(target) {
     tries++;
   }
 }
+// ---------- Camera zoom ----------
+// Uses the camera's own (optical or sensor) zoom when the phone offers it; otherwise enlarges the picture on screen.
+// The last zoom is kept for the next scan.
+const zoom = { mode: "digital", value: 1, min: 1, max: 4, step: 0.1, track: null, last: 1 };
+const zoomRange = $("zoom-range");
+function setupZoom() {
+  const track = ocrStream && ocrStream.getVideoTracks()[0];
+  const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+  zoom.track = track || null;
+  if (caps.zoom && caps.zoom.max > caps.zoom.min) {
+    zoom.mode = "camera";
+    zoom.min = caps.zoom.min;
+    zoom.max = Math.min(caps.zoom.max, caps.zoom.min * 10);
+    zoom.step = caps.zoom.step > 0 ? Math.max(caps.zoom.step, 0.1) : 0.1;
+  } else {
+    zoom.mode = "digital"; zoom.min = 1; zoom.max = 4; zoom.step = 0.1;
+  }
+  zoomRange.min = zoom.min; zoomRange.max = zoom.max; zoomRange.step = zoom.step;
+  zoom.value = NaN;
+  setZoom(zoom.last);
+}
+function setZoom(z) {
+  z = +Math.min(zoom.max, Math.max(zoom.min, Math.round(z / zoom.step) * zoom.step)).toFixed(2);
+  if (z === zoom.value) return;
+  zoom.value = z;
+  zoom.last = z;
+  zoomRange.value = z;
+  $("zoom-val").textContent = (zoom.mode === "camera" ? z / zoom.min : z).toFixed(1) + "×";
+  const video = $("ocr-video");
+  if (zoom.mode === "camera") {
+    video.style.transform = "";
+    zoom.track.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {
+      // The phone refused camera zoom: fall back to enlarging the picture.
+      zoom.mode = "digital"; zoom.min = 1; zoom.max = 4; zoom.step = 0.1;
+      zoomRange.min = 1; zoomRange.max = 4; zoomRange.step = 0.1;
+      zoom.value = NaN; setZoom(1);
+    });
+  } else {
+    video.style.transform = z > 1 ? `scale(${z})` : "";
+  }
+}
+const zoomStep = dir => setZoom(zoom.value + dir * Math.max(zoom.step, (zoom.max - zoom.min) / 10));
+$("zoom-in").addEventListener("click", () => zoomStep(1));
+$("zoom-out").addEventListener("click", () => zoomStep(-1));
+zoomRange.addEventListener("input", () => setZoom(+zoomRange.value));
+// Pinch with two fingers on the picture.
+let pinch = null;
+const fingerGap = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+$("ocr-view").addEventListener("touchstart", e => { if (e.touches.length === 2) pinch = { d: fingerGap(e.touches), z: zoom.value }; }, { passive: true });
+$("ocr-view").addEventListener("touchmove", e => {
+  if (!pinch || e.touches.length !== 2) return;
+  e.preventDefault();
+  setZoom(pinch.z * fingerGap(e.touches) / pinch.d);
+}, { passive: false });
+$("ocr-view").addEventListener("touchend", e => { if (e.touches.length < 2) pinch = null; });
+
 function stopTankCamera() {
   ocrRun++;
   if (ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
