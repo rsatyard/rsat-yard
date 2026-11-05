@@ -139,6 +139,20 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .stat.loaded { --sc: var(--loaded); } .stat.empty_clean { --sc: var(--clean); } .stat.empty_dirty { --sc: var(--dirty); }
 .stat.gas_laden { --sc: var(--gas-laden); } .stat.gas_empty { --sc: var(--gas-empty); }
 .stat.all { --sc: var(--ink); } .stat.free { --sc: var(--slot-hover); }
+/* Totals per yard: Yard 1 = zones 1-10, Yard 2 = zones 11-15 */
+.yards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+@media (max-width: 760px) { .yards { grid-template-columns: 1fr; } }
+.yard-card { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); border-left: 6px solid var(--accent); }
+.yard-card .yc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.yard-card .yc-head b { font: 700 1.15rem var(--font-display); text-transform: uppercase; }
+.yard-card .yc-head span { font-size: 0.8rem; color: var(--muted); }
+.yard-card .yc-main { display: flex; gap: 18px; flex-wrap: wrap; }
+.yard-card .yc-main div { display: grid; }
+.yard-card .n { font: 700 1.6rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.yard-card .k { font-size: 0.8rem; color: var(--muted); }
+.yard-card .yc-status { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; }
+.yard-card .yc-status span { display: inline-flex; align-items: center; gap: 6px; }
+.yard-card .yc-status b { font-variant-numeric: tabular-nums; }
 
 .main { display: grid; grid-template-columns: minmax(300px, 410px) minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
@@ -365,6 +379,7 @@ form.details { display: grid; gap: 8px; }
     <div id="update-bar" class="msg info update-bar" hidden><span id="update-text"></span><a class="primary small" id="update-link" href="#" style="text-decoration:none;padding:6px 12px;border-radius:8px">Download update</a></div>
     <p id="banner" class="msg info" hidden></p>
     <div class="stats" id="stats" role="group" aria-label="Yard totals"></div>
+    <div class="yards" id="yards" aria-label="Totals per yard"></div>
 
     <div class="main">
       <section class="panel scan" aria-labelledby="scan-title">
@@ -798,6 +813,27 @@ function renderStats() {
   ];
   statsEl.innerHTML = items.map(([k, n, label]) =>
     `<button type="button" class="stat ${k}" data-filter="${k}" aria-pressed="${filter === k}"><span class="n">${dataState === "connecting" ? "–" : n}</span><span class="k">${label}</span></button>`).join("");
+  renderYards(list, perSlot);
+}
+// Separate counts for each yard.
+const YARDS = [{ name: "Yard 1", label: "Zones 1–10", from: 1, to: 10 }, { name: "Yard 2", label: "Zones 11–15", from: 11, to: 15 }];
+function renderYards(list, perSlot) {
+  const show = n => dataState === "connecting" ? "–" : n.toLocaleString();
+  $("yards").innerHTML = YARDS.map(y => {
+    const codes = SLOT_ORDER.filter(code => SLOTS[code].zone >= y.from && SLOTS[code].zone <= y.to);
+    const spaces = codes.reduce((n, code) => n + capOf(code), 0);
+    const free = codes.reduce((n, code) => n + Math.max(0, capOf(code) - (perSlot[code] || 0)), 0);
+    const here = list.filter(t => SLOTS[t.location] && SLOTS[t.location].zone >= y.from && SLOTS[t.location].zone <= y.to);
+    return `<section class="yard-card">
+      <div class="yc-head"><b>${y.name}</b><span>${y.label}</span></div>
+      <div class="yc-main">
+        <div><span class="n">${show(here.length)}</span><span class="k">Tanks</span></div>
+        <div><span class="n">${show(free)}</span><span class="k">Free of ${spaces.toLocaleString()} spaces</span></div>
+      </div>
+      <div class="yc-status">${Object.keys(STATUS).map(st =>
+        `<span><i class="dot ${st}"></i>${STATUS[st]} <b>${show(here.filter(t => t.status === st).length)}</b></span>`).join("")}</div>
+    </section>`;
+  }).join("");
 }
 statsEl.addEventListener("click", e => {
   const b = e.target.closest(".stat");
