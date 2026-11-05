@@ -274,14 +274,10 @@ form.details { display: grid; gap: 8px; }
 .camera header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; }
 .camera header b { font: 700 1.2rem var(--font-display); text-transform: uppercase; }
 .camera header button { background: #fff; color: #000; border: 0; }
-#reader { width: 100%; height: 100%; overflow: hidden; display: grid; place-items: center; }
-#reader video { width: 100% !important; height: auto !important; max-height: 100%; object-fit: cover; }
 .camera footer { padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); font-size: 0.9rem; text-align: center; color: #ddd; }
 #cam-err { color: #ffb4a6; }
 .camera footer .linkish { color: #fff; margin-top: 8px; }
-#reader[hidden] { display: none; }
 .ocr-view { position: relative; overflow: hidden; display: grid; place-items: center; }
-.ocr-view[hidden] { display: none; }
 .ocr-view video { width: 100%; height: 100%; object-fit: cover; }
 .ocr-guide { position: absolute; left: 5%; right: 5%; top: 25%; bottom: 25%; border: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
 /* Confirm a scanned tank number */
@@ -382,7 +378,7 @@ form.details { display: grid; gap: 8px; }
         <form class="add" id="add-form" autocomplete="off" hidden>
           <h3 id="add-title">Park a tank here</h3>
           <div class="row">
-            <input id="tank-input" type="text" placeholder="Tank no., e.g. TALU 123456 7" aria-label="Tank number">
+            <input id="tank-input" type="text" placeholder="Tank no., e.g. TALU1234567" autocapitalize="characters" aria-label="Tank number">
             <button type="button" id="tank-cam" aria-label="Scan tank number with camera">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
             </button>
@@ -518,12 +514,10 @@ form.details { display: grid; gap: 8px; }
 
 <!-- Camera -->
 <div class="camera" id="camera" hidden>
-  <header><b id="cam-title">Scan a label</b><button type="button" id="cam-close">Close</button></header>
-  <div id="reader"></div>
-  <div id="ocr-view" class="ocr-view" hidden><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div></div>
-  <footer><span id="cam-hint">Point the camera at a QR code or barcode.</span><br><span id="cam-err"></span><br>
-    <button type="button" class="linkish" id="cam-type">Type the number instead</button>
-    <button type="button" class="linkish" id="cam-switch" style="margin-left:16px">Scan a slot QR label</button></footer>
+  <header><b id="cam-title">Scan tank number</b><button type="button" id="cam-close">Close</button></header>
+  <div id="ocr-view" class="ocr-view"><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div></div>
+  <footer><span id="cam-hint">Fit the tank number inside the yellow frame.</span><br><span id="cam-err"></span><br>
+    <button type="button" class="linkish" id="cam-type">Type the number instead</button></footer>
 </div>
 
 <!-- Confirm a scanned tank number -->
@@ -549,7 +543,6 @@ form.details { display: grid; gap: 8px; }
 <script src="lib/qrcode.min.js"></script>
 <script src="lib/JsBarcode.all.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
-<script src="lib/html5-qrcode.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/tesseract/tesseract.min.js"></script>
 <script>
@@ -596,7 +589,8 @@ const TOTAL_SPACES = SLOT_ORDER.reduce((n, code) => n + capOf(code), 0);
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 const normTank = raw => String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-const fmtTank = id => /^[A-Z]{4}\d{7}$/.test(id) ? `${id.slice(0, 4)} ${id.slice(4, 10)} ${id.slice(10)}` : id;
+// Tank numbers are shown and exported as one block, e.g. SEGU8005369.
+const fmtTank = id => normTank(id);
 const ISO_VAL = (() => { const m = {}; let v = 10; for (const ch of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") { if (v % 11 === 0) v++; m[ch] = v++; } return m; })();
 // ISO 6346 container check digit: null when the number isn't in ISO form.
 function isoCheckOk(id) {
@@ -826,7 +820,7 @@ function lookup(raw, source) {
   } else {
     const id = normTank(raw);
     if (id.length < 4) { setMsg(msgEl, `"${String(raw).slice(0, 40)}" is not a slot or tank number. Slots look like A1 or P15.`, "bad"); return; }
-    if (!tanks.has(id)) { setMsg(msgEl, `${fmtTank(id)} isn't in the register yet. Scan the slot it's parked in, then add it there.`, "bad"); return; }
+    if (!tanks.has(id)) { setMsg(msgEl, `${fmtTank(id)} isn't in the register yet. Tap the slot it's parked in on the yard map, then add it there.`, "bad"); return; }
     setMsg(msgEl, "");
     view = { type: "tank", id };
   }
@@ -854,7 +848,7 @@ function renderSlotView(s) {
       <div>
         <div class="zone">Zone ${s.zone}</div>
         <div class="hint">${s.section} section · column ${s.col} of ${s.cols}, row ${s.row} of ${s.rows}</div>
-        ${view.example ? `<div class="hint">Showing A1. Scan a label or tap the map to pick another slot.</div>` : ""}
+        ${view.example ? `<div class="hint">Showing A1. Tap the map or type a slot to pick another one.</div>` : ""}
       </div>
     </div>
     <div style="display:grid;gap:8px">
@@ -903,7 +897,7 @@ function renderTankView(t) {
         <input id="move-input" type="text" placeholder="New slot, e.g. B3" aria-label="Move to slot" style="width:9rem;text-transform:uppercase;font-family:var(--font-mono);font-weight:600">
         <button type="submit">Move</button>
         ${gateButton(t)}
-      </form>` : `<p class="hint">To bring it back, scan the slot it's parked in and add ${esc(fmtTank(t.tank))} there.</p>`}
+      </form>` : `<p class="hint">To bring it back, tap the slot it's parked in on the map and add ${esc(fmtTank(t.tank))} there.</p>`}
     ${hist.length ? `<div style="display:grid;gap:8px"><span class="eyebrow">History</span><ul class="history-list">${hist.map(h =>
       `<li><span class="when">${when(h.at)}</span><span>${esc(h.action)}${h.location ? " · " + esc(h.location) : ""}${h.status ? " · " + esc(STATUS[h.status] || h.status) : ""}</span><span class="hint">${who(h.by)}</span></li>`).join("")}</ul></div>` : ""}`;
   addForm.hidden = true;
@@ -945,7 +939,9 @@ function updateAddWarn() {
   addWarn.hidden = !notes.length;
   addWarn.textContent = notes.join(" ");
 }
-tankInput.addEventListener("input", updateAddWarn);
+// Tank number boxes: capitals, no spaces, as you type.
+function tidyTankBox(el) { const v = normTank(el.value); if (el.value !== v) el.value = v; }
+tankInput.addEventListener("input", () => { tidyTankBox(tankInput); updateAddWarn(); });
 
 addForm.addEventListener("submit", e => {
   e.preventDefault();
@@ -997,46 +993,11 @@ $("scan-form").addEventListener("submit", e => {
 
 // ---------- Live camera scanner ----------
 const camera = $("camera");
-let qr = null, camTarget = "lookup", camDone = false;
-// Slot labels: QR code or barcode.
-async function openCamera(target) {
-  camTarget = target;
-  camDone = false;
-  $("cam-title").textContent = "Scan a slot label";
-  $("cam-hint").textContent = "Point the camera at a slot QR code or barcode.";
-  $("cam-err").textContent = "";
-  $("reader").hidden = false;
-  $("ocr-view").hidden = true;
-  $("cam-type").hidden = true;
-  $("cam-switch").hidden = true;
-  camera.hidden = false;
-  try {
-    const opts = { verbose: false };
-    if (window.Html5QrcodeSupportedFormats) {
-      const F = Html5QrcodeSupportedFormats;
-      opts.formatsToSupport = [F.QR_CODE, F.CODE_128, F.CODE_39, F.DATA_MATRIX, F.EAN_13];
-    }
-    qr = new Html5Qrcode("reader", opts);
-    await qr.start({ facingMode: "environment" },
-      { fps: 10, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: Math.floor(s * 0.8) }; } },
-      text => {
-        if (camDone) return;
-        camDone = true;
-        if (navigator.vibrate) navigator.vibrate(60);
-        closeCamera();
-        if (camTarget === "tank") { tankInput.value = text.trim(); updateAddWarn(); tankInput.focus(); }
-        else lookup(text, "camera");
-      });
-  } catch (err) {
-    $("cam-err").textContent = "The camera didn't start. Allow camera access for RSAT Yard in your phone settings, then try again.";
-  }
-}
-async function closeCamera() {
+// The camera reads only the tank number painted on the tank (no QR codes or barcodes).
+let camTarget = "lookup";
+function closeCamera() {
   stopTankCamera();
-  const q = qr;
-  qr = null;
   camera.hidden = true;
-  if (q) { try { if (q.isScanning) await q.stop(); q.clear(); } catch (e) { /* already stopped */ } }
 }
 
 // ---------- Tank number reader (text on the tank, read with Tesseract) ----------
@@ -1114,10 +1075,6 @@ async function openTankCamera(target) {
   $("cam-title").textContent = "Scan tank number";
   $("cam-hint").textContent = "Fit the tank number (4 letters + 7 digits) inside the yellow frame and hold steady.";
   $("cam-err").textContent = "";
-  $("reader").hidden = true;
-  $("ocr-view").hidden = false;
-  $("cam-type").hidden = false;
-  $("cam-switch").hidden = target !== "lookup";
   camera.hidden = false;
   const video = $("ocr-video");
   try {
@@ -1175,7 +1132,7 @@ function ocrCheckText() {
   const ok = isoCheckOk(id);
   $("ocr-check").textContent = ok === true ? "✓ The check digit matches this number."
     : ok === false ? "⚠ The check digit doesn't match. Compare it with the number on the tank."
-    : id ? "⚠ Tank numbers have 4 letters and 7 digits, for example BAFU 860281 1." : "Type the tank number.";
+    : id ? "⚠ Tank numbers have 4 letters and 7 digits, for example BAFU8602811." : "Type the tank number.";
 }
 function showTankConfirm(found) {
   const best = found[0];
@@ -1193,7 +1150,7 @@ function showTankConfirm(found) {
   if (!best) ocrInput.focus();
 }
 function closeTankConfirm() { ocrConfirm.hidden = true; }
-ocrInput.addEventListener("input", ocrCheckText);
+ocrInput.addEventListener("input", () => { tidyTankBox(ocrInput); ocrCheckText(); });
 $("ocr-alts").addEventListener("click", e => {
   const b = e.target.closest("[data-alt]");
   if (b) { ocrInput.value = fmtTank(b.dataset.alt); ocrCheckText(); }
@@ -1216,7 +1173,7 @@ $("ocr-ok").addEventListener("click", () => {
   tankInput.value = fmtTank(id);
   updateAddWarn();
   if (view.type === "slot") { setMsg(msgEl, `${fmtTank(id)} is new. Check the status and tap Save tank to park it at ${view.code}.`, "info"); tankInput.focus(); }
-  else setMsg(msgEl, `${fmtTank(id)} isn't in the yard yet. Scan the slot label or tap its slot on the map, then tap Save tank. The number is already filled in.`, "info");
+  else setMsg(msgEl, `${fmtTank(id)} isn't in the yard yet. Tap its slot on the yard map (or type the slot, e.g. A1), then tap Save tank. The number is already filled in.`, "info");
   $("scan-title").scrollIntoView({ behavior: "smooth" });
 });
 
@@ -1224,7 +1181,6 @@ $("cam-btn").addEventListener("click", () => openTankCamera("lookup"));
 $("fab").addEventListener("click", () => openTankCamera("lookup"));
 $("tank-cam").addEventListener("click", () => openTankCamera("tank"));
 $("cam-type").addEventListener("click", () => { closeCamera(); showTankConfirm([]); });
-$("cam-switch").addEventListener("click", () => { closeCamera(); openCamera("lookup"); });
 $("cam-close").addEventListener("click", closeCamera);
 // Android back button: close the camera or the confirm box first, otherwise let the app exit.
 window.onAndroidBack = () => {
@@ -1256,7 +1212,7 @@ function renderRegister() {
   if (dataState === "connecting") { regTable.innerHTML = `<tbody><tr><td class="hint">Loading tank records…</td></tr></tbody>`; return; }
   const rows = registerRows();
   if (!rows.length) {
-    const none = tanks.size === 0 ? "No tanks recorded yet. Scan a slot label (or tap a slot on the map) and add the tank parked there."
+    const none = tanks.size === 0 ? "No tanks recorded yet. Tap a slot on the map and add the tank parked there."
       : regTab === "in" ? "No tanks in the yard match." : "No gated-out tanks match.";
     regTable.innerHTML = `<tbody><tr><td class="hint">${none}</td></tr></tbody>`;
     return;
