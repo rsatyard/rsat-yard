@@ -38,8 +38,14 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d --ignore-garbage > "$RUNNER_TEMP/release.p12"
-            ALIAS=$(keytool -list -v -storetype PKCS12 -keystore "$RUNNER_TEMP/release.p12" -storepass "$STORE_PASSWORD" | sed -n 's/^Alias name: //p' | head -n 1)
-            if [ -z "$ALIAS" ]; then echo "The signing key or its password is wrong. Check the two SIGNING_ secrets."; exit 1; fi
+            echo "Key file: $(stat -c %s "$RUNNER_TEMP/release.p12") bytes, sha256 $(sha256sum "$RUNNER_TEMP/release.p12" | cut -c1-12)"
+            LIST=$(keytool -list -v -storetype PKCS12 -keystore "$RUNNER_TEMP/release.p12" -storepass "$STORE_PASSWORD" 2>&1 || true)
+            ALIAS=$(echo "$LIST" | sed -n 's/^Alias name: //p' | head -n 1)
+            if [ -z "$ALIAS" ]; then
+              echo "$LIST" | grep -i -m 3 "error\|exception" || true
+              echo "The signing key or its password is wrong. Check the two SIGNING_ secrets."
+              exit 1
+            fi
             {
               echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.p12"
               echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD"
