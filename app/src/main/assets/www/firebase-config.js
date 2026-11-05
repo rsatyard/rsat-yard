@@ -14,3 +14,14 @@ window.APK_URL = "https://github.com/rsatyard/rsat-yard/releases/latest/download
 
 // GitHub repository the Android app checks for a newer version.
 window.UPDATE_REPO = "rsatyard/rsat-yard";
+
+// Office website address, used for the Approve link in access-request emails.
+window.SITE_URL = "https://rsatyard.github.io/rsat-yard/";
+
+// EmailJS (emailjs.com) emails the admin when someone asks for access. Leave empty to turn it off.
+// These are browser keys, not secrets. Set the template's "To Email" to the admin's address.
+window.EMAILJS = {
+  serviceId: "",
+  templateId: "",
+  publicKey: "",
+};

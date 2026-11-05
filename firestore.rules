@@ -37,6 +37,13 @@ service cloud.firestore {
       allow delete: if isAdmin() && email != myEmail() && email != get(ownerDoc()).data.email;
     }
 
+    // Oldest phone-app build allowed (set by admins under Accounts).
+    match /config/app {
+      allow get: if signedIn();
+      allow write: if isAdmin() && request.resource.data.keys().hasOnly(['minBuild', 'updatedAt', 'updatedBy'])
+        && request.resource.data.minBuild is int && request.resource.data.minBuild >= 0;
+    }
+
     match /config/owner {
       allow get: if signedIn();
       allow create: if signedIn() && !exists(ownerDoc())

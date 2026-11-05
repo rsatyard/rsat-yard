@@ -24,6 +24,10 @@
   --clean-soft: #d9efe1;
   --dirty: #94541f;
   --dirty-soft: #f3e3d3;
+  --gas-laden: #6b3fa0;
+  --gas-laden-soft: #e8def4;
+  --gas-empty: #a0699e;
+  --gas-empty-soft: #f3e4f2;
   --on-status: #ffffff;
   --bad: #b3361f;
   --bad-soft: #f8e1dc;
@@ -41,6 +45,7 @@
     --accent: #f0b432; --accent-soft: #3d3216; --on-accent: #141715;
     --loaded: #78a3e6; --loaded-soft: #1f2d44; --clean: #62c98f; --clean-soft: #1b3426;
     --dirty: #dda068; --dirty-soft: #3b2a1b; --on-status: #141715;
+    --gas-laden: #b48ae8; --gas-laden-soft: #2e2440; --gas-empty: #e3a6dc; --gas-empty-soft: #3a2639;
     --bad: #f08a75; --bad-soft: #3d221c; --bar: #0d0f0e; --on-bar: #e8ebe7;
     color-scheme: dark;
   }
@@ -120,7 +125,8 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .update-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
 /* Totals */
-.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.stats { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1100px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } .stats .stat.all { grid-column: span 2; } }
 @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stats .stat.all { grid-column: 1 / -1; } }
 .stat {
   text-align: left; display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px;
@@ -131,6 +137,7 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .stat .n { font: 700 1.9rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
 .stat .k { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
 .stat.loaded { --sc: var(--loaded); } .stat.empty_clean { --sc: var(--clean); } .stat.empty_dirty { --sc: var(--dirty); }
+.stat.gas_laden { --sc: var(--gas-laden); } .stat.gas_empty { --sc: var(--gas-empty); }
 .stat.all { --sc: var(--ink); } .stat.free { --sc: var(--slot-hover); }
 
 .main { display: grid; grid-template-columns: minmax(300px, 410px) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -155,6 +162,8 @@ dl.facts dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere
 .pill.loaded { --ps: var(--loaded-soft); --pc: var(--loaded); }
 .pill.empty_clean { --ps: var(--clean-soft); --pc: var(--clean); }
 .pill.empty_dirty { --ps: var(--dirty-soft); --pc: var(--dirty); }
+.pill.gas_laden { --ps: var(--gas-laden-soft); --pc: var(--gas-laden); }
+.pill.gas_empty { --ps: var(--gas-empty-soft); --pc: var(--gas-empty); }
 .pill.out { --ps: var(--slot); --pc: var(--muted); }
 
 .tank-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
@@ -167,6 +176,8 @@ dl.facts dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere
 .seg button.loaded[aria-pressed="true"] { background: var(--loaded); }
 .seg button.empty_clean[aria-pressed="true"] { background: var(--clean); }
 .seg button.empty_dirty[aria-pressed="true"] { background: var(--dirty); }
+.seg button.gas_laden[aria-pressed="true"] { background: var(--gas-laden); }
+.seg button.gas_empty[aria-pressed="true"] { background: var(--gas-empty); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .empty-note { font-size: 0.9rem; color: var(--muted); padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; margin: 0; }
 
@@ -174,12 +185,14 @@ form.add { display: grid; gap: 10px; padding: 14px; border-radius: 8px; backgrou
 form.add .row { display: flex; gap: 8px; }
 form.add input[type="text"] { flex: 1; background: var(--surface); }
 #tank-input { font: 600 1rem var(--font-mono); text-transform: uppercase; }
+.caps { text-transform: uppercase; }
 .radio-seg { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0; }
 .radio-seg label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 11px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); font-size: 0.88rem; font-weight: 600; }
 .radio-seg input { accent-color: var(--ink); margin: 0; }
 .radio-seg label:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dc); }
 .dot.loaded { --dc: var(--loaded); } .dot.empty_clean { --dc: var(--clean); } .dot.empty_dirty { --dc: var(--dirty); }
+.dot.gas_laden { --dc: var(--gas-laden); } .dot.gas_empty { --dc: var(--gas-empty); }
 .history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.84rem; }
 .history-list li { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
 .history-list .when { color: var(--muted); }
@@ -203,6 +216,8 @@ form.add input[type="text"] { flex: 1; background: var(--surface); }
 .slot.loaded { background: var(--loaded); color: var(--on-status); }
 .slot.empty_clean { background: var(--clean); color: var(--on-status); }
 .slot.empty_dirty { background: var(--dirty); color: var(--on-status); }
+.slot.gas_laden { background: var(--gas-laden); color: var(--on-status); }
+.slot.gas_empty { background: var(--gas-empty); color: var(--on-status); }
 .slot[data-count]::after { content: attr(data-count); position: absolute; top: -5px; right: -4px; font-size: 0.62rem; line-height: 1; background: var(--ink); color: var(--surface); border-radius: 999px; padding: 2px 4px; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .slot .dots { display: flex; gap: 2px; }
@@ -211,6 +226,8 @@ form.add input[type="text"] { flex: 1; background: var(--surface); }
 .slot .dots i.loaded { background: var(--loaded); }
 .slot .dots i.empty_clean { background: var(--clean); }
 .slot .dots i.empty_dirty { background: var(--dirty); }
+.slot .dots i.gas_laden { background: var(--gas-laden); }
+.slot .dots i.gas_empty { background: var(--gas-empty); }
 .slot.full { box-shadow: inset 0 0 0 2px var(--ink); }
 .slot.hit { outline: 3px solid var(--accent); outline-offset: 1px; z-index: 1; }
 .yard.filtering .slot:not(.match) { opacity: 0.25; }
@@ -261,6 +278,19 @@ form.details { display: grid; gap: 8px; }
 #reader video { width: 100% !important; height: auto !important; max-height: 100%; object-fit: cover; }
 .camera footer { padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); font-size: 0.9rem; text-align: center; color: #ddd; }
 #cam-err { color: #ffb4a6; }
+.camera footer .linkish { color: #fff; margin-top: 8px; }
+#reader[hidden] { display: none; }
+.ocr-view { position: relative; overflow: hidden; display: grid; place-items: center; }
+.ocr-view[hidden] { display: none; }
+.ocr-view video { width: 100%; height: 100%; object-fit: cover; }
+.ocr-guide { position: absolute; left: 5%; right: 5%; top: 25%; bottom: 25%; border: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
+/* Confirm a scanned tank number */
+.confirm { display: grid; place-items: center; background: rgba(0,0,0,0.6); padding: 16px; grid-template-rows: none; }
+.confirm .sheet { width: min(440px, 100%); display: grid; gap: 12px; color: var(--ink); }
+.ocr-input { font: 700 1.7rem var(--font-mono); text-align: center; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px; }
+.ocr-input[readonly] { background: var(--slot); border-color: transparent; }
+.confirm .acc-actions { justify-content: stretch; }
+.confirm .acc-actions button { flex: 1; padding: 12px; }
 </style>
 </head>
 <body>
@@ -312,6 +342,7 @@ form.details { display: grid; gap: 8px; }
     <h2 id="wait-title">Waiting for approval</h2>
     <p id="wait-text"></p>
     <button class="primary" type="button" id="claim-btn" hidden>Set me up as the admin</button>
+    <a class="primary" id="wait-link" href="#" hidden style="text-align:center;text-decoration:none;padding:10px;border-radius:8px">Download the new version</a>
     <p id="wait-msg" class="msg bad" hidden></p>
     <button type="button" id="wait-logout">Sign out</button>
   </div>
@@ -328,6 +359,7 @@ form.details { display: grid; gap: 8px; }
   </div>
 
   <div class="wrap">
+    <div id="approve-bar" class="msg info update-bar" hidden><span id="approve-text"></span><span class="acc-actions"><button type="button" class="primary small" id="approve-yes">Approve</button><button type="button" class="small" id="approve-no">Not now</button></span></div>
     <div id="update-bar" class="msg info update-bar" hidden><span id="update-text"></span><a class="primary small" id="update-link" href="#" style="text-decoration:none;padding:6px 12px;border-radius:8px">Download update</a></div>
     <p id="banner" class="msg info" hidden></p>
     <div class="stats" id="stats" role="group" aria-label="Yard totals"></div>
@@ -337,13 +369,13 @@ form.details { display: grid; gap: 8px; }
         <h2 id="scan-title">Scan</h2>
         <button class="primary big-scan" type="button" id="cam-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
-          Scan with camera
+          Scan tank number
         </button>
         <form class="lookup" id="scan-form" autocomplete="off">
           <input id="scan-input" type="text" placeholder="Slot (A1) or tank no." aria-label="Slot code or tank number">
           <button type="submit">Look up</button>
         </form>
-        <p class="hint">Scan a slot label to see the tank parked there. Scan or type a tank number to find where it is. A handheld scanner can type into the box.</p>
+        <p class="hint">Point the camera at the number painted on the tank (4 letters + 7 digits), then tap OK or Edit to correct it. Or type a slot (A1) or tank number in the box.</p>
         <p id="scan-msg" class="msg" hidden></p>
         <div class="result" id="result" aria-live="polite"></div>
 
@@ -359,10 +391,12 @@ form.details { display: grid; gap: 8px; }
             <label><input type="radio" name="add-status" value="loaded"><span class="dot loaded"></span>Loaded</label>
             <label><input type="radio" name="add-status" value="empty_clean" checked><span class="dot empty_clean"></span>Empty clean</label>
             <label><input type="radio" name="add-status" value="empty_dirty"><span class="dot empty_dirty"></span>Empty dirty</label>
+            <label><input type="radio" name="add-status" value="gas_laden"><span class="dot gas_laden"></span>Gas tank laden</label>
+            <label><input type="radio" name="add-status" value="gas_empty"><span class="dot gas_empty"></span>Gas tank empty</label>
           </fieldset>
-          <input id="customer-input" type="text" list="customer-list" placeholder="Customer" aria-label="Customer">
+          <input id="customer-input" class="caps" type="text" list="customer-list" placeholder="Customer" aria-label="Customer" autocapitalize="characters">
           <datalist id="customer-list"></datalist>
-          <input id="note-input" type="text" placeholder="Note (optional): product, seal no." aria-label="Note">
+          <input id="note-input" class="caps" type="text" placeholder="Note (optional): product, seal no." aria-label="Note" autocapitalize="characters">
           <p id="add-warn" class="hint" hidden></p>
           <button class="primary" type="submit" id="add-btn">Save tank</button>
         </form>
@@ -375,6 +409,8 @@ form.details { display: grid; gap: 8px; }
             <span><i style="--lc: var(--loaded)"></i>Loaded</span>
             <span><i style="--lc: var(--clean)"></i>Empty clean</span>
             <span><i style="--lc: var(--dirty)"></i>Empty dirty</span>
+            <span><i style="--lc: var(--gas-laden)"></i>Gas tank laden</span>
+            <span><i style="--lc: var(--gas-empty)"></i>Gas tank empty</span>
             <span><i style="--lc: var(--slot-hover)"></i>Free space</span>
           </div>
         </div>
@@ -407,7 +443,7 @@ form.details { display: grid; gap: 8px; }
         <div class="field"><label class="eyebrow" for="ex-customer">Customer</label>
           <select id="ex-customer"><option value="">All customers</option></select></div>
         <div class="field"><label class="eyebrow" for="ex-status">Status</label>
-          <select id="ex-status"><option value="">All statuses</option><option value="loaded">Loaded</option><option value="empty_clean">Empty clean</option><option value="empty_dirty">Empty dirty</option></select></div>
+          <select id="ex-status"><option value="">All statuses</option><option value="loaded">Loaded</option><option value="empty_clean">Empty clean</option><option value="empty_dirty">Empty dirty</option><option value="gas_laden">Gas tank laden</option><option value="gas_empty">Gas tank empty</option></select></div>
         <div class="field"><label class="eyebrow" for="ex-from">Date in from</label><input id="ex-from" type="date"></div>
         <div class="field"><label class="eyebrow" for="ex-to">Date in to</label><input id="ex-to" type="date"></div>
       </div>
@@ -465,6 +501,15 @@ form.details { display: grid; gap: 8px; }
       <p class="hint">With a password, the account is ready to sign in. Without one, the person taps <b>Create account</b> with this email and gets in straight away.</p>
       <p id="acc-msg" class="msg" hidden style="margin-top:10px"></p>
       <div class="table-scroll"><table id="acc-table"></table></div>
+
+      <h3 style="margin-top:18px">Oldest app version allowed</h3>
+      <p class="hint">Older phone apps keep working after an update. Only when an update must reach everyone (for example a security fix), raise this number: phones on an older version are then asked to update before they can continue. 0 allows every version. The website is always up to date.</p>
+      <form class="acc-add" id="minver-form" autocomplete="off">
+        <label>Version 1.0.<input id="minver" type="number" min="0" step="1" value="0"></label>
+        <button type="submit">Save</button>
+      </form>
+      <p class="hint" id="minver-latest"></p>
+      <p id="minver-msg" class="msg" hidden style="margin-top:10px"></p>
     </section>
   </div>
 
@@ -475,7 +520,25 @@ form.details { display: grid; gap: 8px; }
 <div class="camera" id="camera" hidden>
   <header><b id="cam-title">Scan a label</b><button type="button" id="cam-close">Close</button></header>
   <div id="reader"></div>
-  <footer><span id="cam-hint">Point the camera at a QR code or barcode.</span><br><span id="cam-err"></span></footer>
+  <div id="ocr-view" class="ocr-view" hidden><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div></div>
+  <footer><span id="cam-hint">Point the camera at a QR code or barcode.</span><br><span id="cam-err"></span><br>
+    <button type="button" class="linkish" id="cam-type">Type the number instead</button>
+    <button type="button" class="linkish" id="cam-switch" style="margin-left:16px">Scan a slot QR label</button></footer>
+</div>
+
+<!-- Confirm a scanned tank number -->
+<div class="camera confirm" id="ocr-confirm" hidden>
+  <div class="sheet panel" role="dialog" aria-labelledby="ocr-title">
+    <h2 id="ocr-title">Tank number</h2>
+    <input id="ocr-input" class="ocr-input" type="text" autocomplete="off" spellcheck="false" aria-label="Tank number" readonly>
+    <p id="ocr-check" class="hint"></p>
+    <div id="ocr-alts" class="chips" hidden></div>
+    <div class="acc-actions">
+      <button type="button" class="primary" id="ocr-ok">OK</button>
+      <button type="button" id="ocr-edit">Edit</button>
+    </div>
+    <button type="button" class="linkish" id="ocr-again" style="justify-self:center">Scan again</button>
+  </div>
 </div>
 
 <script src="firebase-config.js"></script>
@@ -488,6 +551,7 @@ form.details { display: grid; gap: 8px; }
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/html5-qrcode.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
+<script src="lib/tesseract/tesseract.min.js"></script>
 <script>
 // ---------- Yard layout (from the "Yard Map" sheet) ----------
 // Each block is one band of the map; within a zone the slot letters run down each column.
@@ -522,7 +586,7 @@ const at = (z, col, row) => {
   if (col < 1 || row < 1 || col > zn.cols || row > zn.rows) return null;
   return zn.slots[(col - 1) * zn.rows + (row - 1)];
 };
-const STATUS = { loaded: "Loaded", empty_clean: "Empty clean", empty_dirty: "Empty dirty" };
+const STATUS = { loaded: "Loaded", empty_clean: "Empty clean", empty_dirty: "Empty dirty", gas_laden: "Gas tank laden", gas_empty: "Gas tank empty" };
 const CAPACITY = 5; // tanks per slot, except the smaller slots below
 const SMALL_SLOTS = { A11: 4, B11: 4, C11: 4, M15: 4, N15: 4, O15: 4 };
 const capOf = code => SMALL_SLOTS[code] || CAPACITY;
@@ -722,6 +786,8 @@ function renderStats() {
     ["loaded", list.filter(t => t.status === "loaded").length, "Loaded"],
     ["empty_clean", list.filter(t => t.status === "empty_clean").length, "Empty clean"],
     ["empty_dirty", list.filter(t => t.status === "empty_dirty").length, "Empty dirty"],
+    ["gas_laden", list.filter(t => t.status === "gas_laden").length, "Gas tank laden"],
+    ["gas_empty", list.filter(t => t.status === "gas_empty").length, "Gas tank empty"],
     ["free", free, `Free spaces of ${TOTAL_SPACES.toLocaleString()}`],
   ];
   statsEl.innerHTML = items.map(([k, n, label]) =>
@@ -827,8 +893,8 @@ function renderTankView(t) {
     </dl>
     <form class="details" id="details-form" autocomplete="off">
       <span class="eyebrow">Edit details</span>
-      <input id="det-customer" type="text" list="customer-list" placeholder="Customer" aria-label="Customer" value="${esc(t.customer || "")}">
-      <input id="det-note" type="text" placeholder="Note: product, seal no." aria-label="Note" value="${esc(t.note || "")}">
+      <input id="det-customer" class="caps" type="text" list="customer-list" placeholder="Customer" aria-label="Customer" autocapitalize="characters" value="${esc(t.customer || "")}">
+      <input id="det-note" class="caps" type="text" placeholder="Note: product, seal no." aria-label="Note" autocapitalize="characters" value="${esc(t.note || "")}">
       <button type="submit">Save details</button>
     </form>
     ${t.inYard ? `
@@ -888,8 +954,8 @@ addForm.addEventListener("submit", e => {
   if (id.length < 4) { setMsg(msgEl, "Enter the tank number first.", "bad"); tankInput.focus(); return; }
   const status = addForm.querySelector('input[name="add-status"]:checked').value;
   const prev = tanks.get(id);
-  const note = noteInput.value.trim() || (prev && prev.inYard ? prev.note : "");
-  const customer = customerInput.value.trim() || (prev && prev.inYard ? prev.customer || "" : "");
+  const note = noteInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.note : "");
+  const customer = customerInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.customer || "" : "");
   if (parkTank(id, view.code, status, note, customer)) { tankInput.value = ""; noteInput.value = ""; customerInput.value = ""; updateAddWarn(); renderData(); }
 });
 
@@ -908,7 +974,7 @@ document.addEventListener("click", e => {
 document.addEventListener("submit", e => {
   if (e.target.id !== "details-form") return;
   e.preventDefault();
-  saveDetails(view.id, $("det-customer").value.trim(), $("det-note").value.trim());
+  saveDetails(view.id, $("det-customer").value.trim().toUpperCase(), $("det-note").value.trim().toUpperCase());
 });
 document.addEventListener("submit", e => {
   if (e.target.id !== "move-form") return;
@@ -932,11 +998,17 @@ $("scan-form").addEventListener("submit", e => {
 // ---------- Live camera scanner ----------
 const camera = $("camera");
 let qr = null, camTarget = "lookup", camDone = false;
+// Slot labels: QR code or barcode.
 async function openCamera(target) {
   camTarget = target;
   camDone = false;
-  $("cam-title").textContent = target === "tank" ? "Scan tank number" : "Scan a label";
+  $("cam-title").textContent = "Scan a slot label";
+  $("cam-hint").textContent = "Point the camera at a slot QR code or barcode.";
   $("cam-err").textContent = "";
+  $("reader").hidden = false;
+  $("ocr-view").hidden = true;
+  $("cam-type").hidden = true;
+  $("cam-switch").hidden = true;
   camera.hidden = false;
   try {
     const opts = { verbose: false };
@@ -960,17 +1032,206 @@ async function openCamera(target) {
   }
 }
 async function closeCamera() {
+  stopTankCamera();
   const q = qr;
   qr = null;
   camera.hidden = true;
   if (q) { try { if (q.isScanning) await q.stop(); q.clear(); } catch (e) { /* already stopped */ } }
 }
-$("cam-btn").addEventListener("click", () => openCamera("lookup"));
-$("fab").addEventListener("click", () => openCamera("lookup"));
-$("tank-cam").addEventListener("click", () => openCamera("tank"));
+
+// ---------- Tank number reader (text on the tank, read with Tesseract) ----------
+// Finds ISO 6346 numbers (3 letters + U/J/Z, 6 digits, check digit) in the text the camera reads.
+// OCR mixes up lookalike characters, so each position tries its lookalikes and the check digit decides.
+const LETTER_ALTS = { "0": "OD", "1": "IL", "2": "ZA", "3": "B", "4": "A", "5": "S", "6": "G", "7": "T", "8": "B",
+  I: "J", J: "I", L: "I", O: "DQ", D: "O", Q: "O", V: "U", H: "N", N: "H", M: "N", K: "X", X: "K" };
+const DIGIT_ALTS = { O: "0", Q: "0", D: "0", U: "0", I: "1", L: "1", J: "1", T: "7", Z: "2", S: "5", B: "8", G: "6", A: "4", "7": "1", "1": "7" };
+const isoDigit = id10 => { let sum = 0; for (let i = 0; i < 10; i++) sum += (/\d/.test(id10[i]) ? +id10[i] : ISO_VAL[id10[i]]) * 2 ** i; return (sum % 11) % 10; };
+// Every way to read some characters as letters or digits: [text, characters changed].
+function readsAs(raw, isOk, alts) {
+  let reads = [["", 0]];
+  for (const c of raw) {
+    const opts = (isOk(c) ? [[c, 0]] : []).concat((alts[c] || "").split("").filter(Boolean).map(a => [a, 1]));
+    reads = reads.flatMap(([s, n]) => opts.map(([a, k]) => [s + a, n + k]));
+  }
+  return reads;
+}
+function tankCandidates(text) {
+  const lines = String(text || "").toUpperCase().split(/\n+/).map(l => l.replace(/[^A-Z0-9]/g, "")).filter(Boolean);
+  const strings = lines.map(s => [s, 1]);
+  for (let i = 0; i + 1 < lines.length; i++) strings.push([lines[i] + lines[i + 1], 0]);
+  const found = new Map();
+  strings.forEach(([s, oneLine]) => {
+    for (let i = 0; i + 10 <= s.length; i++) {
+      const c10 = s[i + 10];
+      const readChecks = c10 === undefined ? [] : /\d/.test(c10) ? [c10] : (DIGIT_ALTS[c10] || "").split("");
+      const owners = readsAs(s.slice(i, i + 4), c => /[A-Z]/.test(c), LETTER_ALTS).filter(([o]) => /^[A-Z]{3}[UJZ]$/.test(o));
+      const serials = readsAs(s.slice(i + 4, i + 10), c => /\d/.test(c), DIGIT_ALTS).filter(([d]) => /^\d{6}$/.test(d));
+      owners.forEach(([owner, oc]) => serials.forEach(([serial, sc]) => {
+        const want = String(isoDigit(owner + serial));
+        const checkOk = readChecks.includes(want);
+        if (oc + sc > 2 && !checkOk) return;
+        const score = (checkOk ? 4 : 0) - (oc + sc) * 2 + oneLine;
+        const id = owner + serial + want;
+        const prev = found.get(id);
+        if (!prev || prev.score < score) found.set(id, { id, score, checkOk });
+      }));
+    }
+  });
+  return [...found.values()].filter(c => c.score > -2).sort((a, b) => b.score - a.score);
+}
+
+let ocrWorker = null, ocrStream = null, ocrRun = 0;
+function getOcr() {
+  if (!ocrWorker) {
+    const base = new URL("lib/tesseract/", location.href).href;
+    ocrWorker = Tesseract.createWorker("eng", 1, { workerPath: base + "worker.min.js", corePath: base, langPath: base, gzip: true })
+      .then(async w => {
+        await w.setParameters({ tessedit_pageseg_mode: "11", tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 " });
+        return w;
+      });
+    ocrWorker.catch(() => { ocrWorker = null; });
+  }
+  return ocrWorker;
+}
+// Each pass reads the picture a different way (area, size, layout mode); a number found by two passes wins.
+const OCR_CROP = [0.05, 0.2, 0.95, 0.8], OCR_FULL = [0, 0, 1, 1];
+const OCR_PASSES = [["11", OCR_CROP, 700], ["11", OCR_CROP, 1000], ["3", OCR_CROP, 1800], ["11", OCR_FULL, 1600], ["3", OCR_CROP, 700], ["11", OCR_CROP, 1400]];
+// Part of the camera picture, greyed and sharpened for reading.
+function ocrFrame(video, box, maxW) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const sx = vw * box[0], sy = vh * box[1], sw = vw * (box[2] - box[0]), sh = vh * (box[3] - box[1]);
+  const scale = Math.min(1, maxW / sw);
+  const c = document.createElement("canvas");
+  c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+  const g = c.getContext("2d");
+  g.filter = "grayscale(1) contrast(1.4)";
+  g.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return c;
+}
+async function openTankCamera(target) {
+  camTarget = target;
+  const run = ++ocrRun;
+  $("cam-title").textContent = "Scan tank number";
+  $("cam-hint").textContent = "Fit the tank number (4 letters + 7 digits) inside the yellow frame and hold steady.";
+  $("cam-err").textContent = "";
+  $("reader").hidden = true;
+  $("ocr-view").hidden = false;
+  $("cam-type").hidden = false;
+  $("cam-switch").hidden = target !== "lookup";
+  camera.hidden = false;
+  const video = $("ocr-video");
+  try {
+    ocrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    if (run !== ocrRun) { ocrStream.getTracks().forEach(t => t.stop()); return; }
+    video.srcObject = ocrStream;
+    await video.play();
+  } catch (err) {
+    $("cam-err").textContent = "The camera didn't start. Allow camera access for RSAT Yard in your phone settings, then try again.";
+    return;
+  }
+  let w;
+  try {
+    if (!ocrWorker) $("cam-hint").textContent = "Getting the number reader ready…";
+    w = await getOcr();
+  } catch (err) {
+    $("cam-err").textContent = "The number reader didn't load. Close and try again, or type the number instead.";
+    return;
+  }
+  const votes = new Map();
+  let tries = 0;
+  while (run === ocrRun && !camera.hidden) {
+    if (!video.videoWidth) { await new Promise(r => setTimeout(r, 200)); continue; }
+    $("cam-hint").textContent = tries < 8 ? "Reading… fit the tank number inside the yellow frame and hold steady."
+      : "Still looking. Move closer so the number fills the frame, and avoid glare.";
+    const [psm, box, maxW] = OCR_PASSES[tries % OCR_PASSES.length];
+    await w.setParameters({ tessedit_pageseg_mode: psm });
+    const { data } = await w.recognize(ocrFrame(video, box, maxW));
+    if (run !== ocrRun) return;
+    tankCandidates(data.text).slice(0, 2).forEach((c, i) => {
+      const v = votes.get(c.id) || { id: c.id, n: 0, pts: 0, checkOk: false };
+      v.n++; v.pts += (i === 0 ? 2 : 1) + (c.checkOk ? 1 : 0); v.checkOk = v.checkOk || c.checkOk;
+      votes.set(c.id, v);
+    });
+    const ranked = [...votes.values()].sort((a, b) => b.pts - a.pts);
+    if (ranked.length && ranked[0].n >= 2) {
+      if (navigator.vibrate) navigator.vibrate(60);
+      closeCamera();
+      showTankConfirm(ranked);
+      return;
+    }
+    tries++;
+  }
+}
+function stopTankCamera() {
+  ocrRun++;
+  if (ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
+  $("ocr-video").srcObject = null;
+}
+
+// OK / Edit after a scan.
+const ocrConfirm = $("ocr-confirm"), ocrInput = $("ocr-input");
+function ocrCheckText() {
+  const id = normTank(ocrInput.value);
+  const ok = isoCheckOk(id);
+  $("ocr-check").textContent = ok === true ? "✓ The check digit matches this number."
+    : ok === false ? "⚠ The check digit doesn't match. Compare it with the number on the tank."
+    : id ? "⚠ Tank numbers have 4 letters and 7 digits, for example BAFU 860281 1." : "Type the tank number.";
+}
+function showTankConfirm(found) {
+  const best = found[0];
+  ocrInput.value = best ? fmtTank(best.id) : "";
+  ocrInput.readOnly = !!best;
+  $("ocr-title").textContent = best ? "Is this the tank number?" : "Type the tank number";
+  $("ocr-edit").hidden = !best;
+  const alts = found.slice(1, 3);
+  $("ocr-alts").hidden = !alts.length;
+  $("ocr-alts").innerHTML = alts.length ? `<span class="hint" style="width:100%">Or did you mean:</span>` +
+    alts.map(c => `<button type="button" class="chip" data-alt="${esc(c.id)}">${esc(fmtTank(c.id))}</button>`).join("") : "";
+  ocrCheckText();
+  if (best && !best.checkOk) $("ocr-check").textContent += " The small boxed digit wasn't clear, so it was worked out from the rest of the number.";
+  ocrConfirm.hidden = false;
+  if (!best) ocrInput.focus();
+}
+function closeTankConfirm() { ocrConfirm.hidden = true; }
+ocrInput.addEventListener("input", ocrCheckText);
+$("ocr-alts").addEventListener("click", e => {
+  const b = e.target.closest("[data-alt]");
+  if (b) { ocrInput.value = fmtTank(b.dataset.alt); ocrCheckText(); }
+});
+$("ocr-edit").addEventListener("click", () => {
+  ocrInput.readOnly = false;
+  $("ocr-title").textContent = "Correct the tank number";
+  ocrInput.focus();
+  ocrInput.select();
+});
+$("ocr-again").addEventListener("click", () => { closeTankConfirm(); openTankCamera(camTarget); });
+ocrInput.addEventListener("keydown", e => { if (e.key === "Enter") $("ocr-ok").click(); });
+$("ocr-ok").addEventListener("click", () => {
+  const id = normTank(ocrInput.value);
+  if (id.length < 4) { $("ocr-check").textContent = "Type the tank number first."; ocrInput.readOnly = false; ocrInput.focus(); return; }
+  closeTankConfirm();
+  if (camTarget === "tank") { tankInput.value = fmtTank(id); updateAddWarn(); tankInput.focus(); return; }
+  if (tanks.has(id)) { lookup(id, "camera"); return; }
+  // A new tank: keep the number ready for when they pick its slot.
+  tankInput.value = fmtTank(id);
+  updateAddWarn();
+  if (view.type === "slot") { setMsg(msgEl, `${fmtTank(id)} is new. Check the status and tap Save tank to park it at ${view.code}.`, "info"); tankInput.focus(); }
+  else setMsg(msgEl, `${fmtTank(id)} isn't in the yard yet. Scan the slot label or tap its slot on the map, then tap Save tank. The number is already filled in.`, "info");
+  $("scan-title").scrollIntoView({ behavior: "smooth" });
+});
+
+$("cam-btn").addEventListener("click", () => openTankCamera("lookup"));
+$("fab").addEventListener("click", () => openTankCamera("lookup"));
+$("tank-cam").addEventListener("click", () => openTankCamera("tank"));
+$("cam-type").addEventListener("click", () => { closeCamera(); showTankConfirm([]); });
+$("cam-switch").addEventListener("click", () => { closeCamera(); openCamera("lookup"); });
 $("cam-close").addEventListener("click", closeCamera);
-// Android back button: close the camera first, otherwise let the app exit.
-window.onAndroidBack = () => { if (!camera.hidden) { closeCamera(); return true; } return false; };
+// Android back button: close the camera or the confirm box first, otherwise let the app exit.
+window.onAndroidBack = () => {
+  if (!ocrConfirm.hidden) { closeTankConfirm(); return true; }
+  if (!camera.hidden) { closeCamera(); return true; }
+  return false;
+};
 
 // ---------- Register ----------
 let regTab = "in";
@@ -1287,6 +1548,7 @@ function waitScreen(title, text, claim) {
   $("wait-title").textContent = title;
   $("wait-text").textContent = text;
   $("claim-btn").hidden = !claim;
+  $("wait-link").hidden = true;
   setMsg($("wait-msg"), "");
   show("wait-screen");
 }
@@ -1355,17 +1617,20 @@ async function onProfile(u, snap) {
     askedFor = u.uid;
     try {
       const owner = await fdb.collection("config").doc("owner").get();
-      if (me !== u) return;
+      // The account record may have arrived meanwhile (for example the admin was just set up).
+      if (me !== u || profile) return;
       if (!owner.exists) {
         waitScreen("First-time setup", `No admin is set up yet. If you manage this app, make ${u.email} the admin. You can then add and approve the other accounts.`, true);
         return;
       }
       // Ask for access: the snapshot fires again with this pending record.
+      const name = signupName || u.displayName || person(u.email);
       await fdb.collection("users").doc(emailKey(u.email)).set({
-        email: emailKey(u.email), name: signupName || u.displayName || person(u.email),
-        role: "staff", status: "pending", createdAt: new Date().toISOString(),
+        email: emailKey(u.email), name, role: "staff", status: "pending", createdAt: new Date().toISOString(),
       });
+      notifyAdmin(name, emailKey(u.email), owner.data().email);
     } catch (err) {
+      if (me !== u || profile) return;
       waitScreen("Can't check your account", err.code === "permission-denied"
         ? "The database rules are out of date. Ask your admin to publish the latest rules (README step 3)."
         : "Check your connection, then sign out and back in.", false);
@@ -1376,14 +1641,38 @@ async function onProfile(u, snap) {
     if (profile && profile.status === "active") stopApp();
     profile = p;
     if (p.status === "disabled") waitScreen("Account turned off", "An admin has turned off this account. Ask your admin if you need access again.", false);
-    else waitScreen("Waiting for approval", `Thanks, ${p.name || person(u.email)}. An admin needs to approve your account before you can see the yard. The app opens by itself as soon as they do.`, false);
+    else waitScreen("Waiting for approval", `Thanks, ${p.name || person(u.email)}. ${emailOn() ? "We've emailed the admin your request." : "An admin needs to approve your account."} The app opens by itself as soon as they approve it.`, false);
     return;
   }
-  const wasActive = profile && profile.status === "active";
   profile = p;
-  if (!wasActive) startApp(u);
+  if (versionBlocked()) { stopApp(); updateScreen(); return; }
+  if (!unsub) startApp(u);
   else $("me-name").textContent = p.name || person(u.email);
   setAdmin(p.role === "admin");
+}
+
+// ---------- Oldest app version allowed ----------
+// config/app.minBuild: phone apps with a lower build number must update first. The website is never blocked.
+let minBuild = 0, cfgUnsub = null;
+const versionBlocked = () => !!(window.AndroidBridge && window.APP_BUILD && window.APP_BUILD < minBuild);
+function updateScreen() {
+  waitScreen("Update needed", `This version of the app (1.0.${window.APP_BUILD}) is no longer supported. Download the new version, install it, then open the app again. Your data is safe.`, false);
+  $("wait-link").href = window.APK_URL || "#";
+  $("wait-link").hidden = !window.APK_URL;
+}
+function onAppConfig(u, snap) {
+  minBuild = snap.exists ? Number(snap.data().minBuild) || 0 : 0;
+  if (document.activeElement !== $("minver")) $("minver").value = minBuild;
+  if (me !== u || !profile || profile.status !== "active") return;
+  if (versionBlocked()) { if (unsub) stopApp(); updateScreen(); }
+  else if (!unsub) { startApp(u); setAdmin(profile.role === "admin"); }
+}
+function showLatestVersion() {
+  if (!window.UPDATE_REPO) return;
+  fetch(`https://api.github.com/repos/${window.UPDATE_REPO}/releases/latest`)
+    .then(r => r.ok ? r.json() : null)
+    .then(rel => { if (rel && rel.tag_name) $("minver-latest").textContent = `Newest app version on GitHub: ${rel.tag_name.replace(/^v/, "")}.`; })
+    .catch(() => {});
 }
 function setAdmin(on) {
   $("acc-btn").hidden = !on;
@@ -1394,6 +1683,7 @@ function setAdmin(on) {
       renderAccounts();
     }, () => setMsg(accMsg, "Couldn't load the accounts. Sign out and back in.", "bad"));
     fdb.collection("config").doc("owner").get().then(d => { ownerEmail = d.exists ? d.data().email : ""; renderAccounts(); }).catch(() => {});
+    showLatestVersion();
   }
   if (!on && usersUnsub) { usersUnsub(); usersUnsub = null; }
 }
@@ -1417,6 +1707,39 @@ function renderAccounts() {
       : `<select data-acc-role="${e}" aria-label="Role for ${e}">${Object.keys(ROLE).map(r => `<option value="${r}"${r === a.role ? " selected" : ""}>${ROLE[r]}</option>`).join("")}</select>`;
     return `<tr><td>${esc(a.name || "")}</td><td>${e}</td><td>${role}</td><td><span class="acc-status ${esc(a.status)}">${esc(ACC_STATUS[a.status] || a.status)}</span></td><td><div class="acc-actions">${actions}</div></td></tr>`;
   }).join("")}</tbody>`;
+  offerLinkApproval();
+}
+// Access-request emails go through EmailJS; its template sends them to the admin with an Approve link.
+const emailOn = () => { const ej = window.EMAILJS || {}; return !!(ej.serviceId && ej.templateId && ej.publicKey); };
+function notifyAdmin(name, email, adminEmail) {
+  if (!emailOn()) return;
+  const ej = window.EMAILJS;
+  fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      service_id: ej.serviceId, template_id: ej.templateId, user_id: ej.publicKey,
+      template_params: { name, email, to_email: adminEmail || "", approve_link: (window.SITE_URL || location.href.split("#")[0]) + "#approve=" + encodeURIComponent(email) },
+    }),
+  }).catch(() => { /* the request still shows in Accounts */ });
+}
+// Opening the email's Approve link: #approve=<email>. Kept until an admin is signed in and the accounts have loaded.
+let linkApprove = (() => { const m = location.hash.match(/^#approve=(.+)$/); try { return m ? decodeURIComponent(m[1]).toLowerCase() : ""; } catch (e) { return ""; } })();
+function offerLinkApproval() {
+  if (!linkApprove || !accounts.length) return;
+  const a = accounts.find(x => x.email === linkApprove);
+  const done = text => {
+    linkApprove = "";
+    history.replaceState(null, "", location.pathname + location.search);
+    $("approve-bar").hidden = true;
+    if (text) setMsg(accMsg, text, "info");
+  };
+  if (!a) { done(`There's no access request for that email any more.`); return; }
+  if (a.status !== "pending") { done(`${a.name || a.email} is already ${ACC_STATUS[a.status].toLowerCase()}.`); return; }
+  $("approve-text").textContent = `${a.name || a.email} (${a.email}) is asking for access to the yard app.`;
+  $("approve-bar").hidden = false;
+  $("approve-yes").onclick = () => { updateAccount(a.email, { status: "active" }, `Approved ${a.email}. They can use the app now.`); done(); };
+  $("approve-no").onclick = () => done("Not approved yet. You can still approve it under Accounts.");
 }
 function updateAccount(email, change, okText) {
   const a = accounts.find(x => x.email === email);
@@ -1467,11 +1790,13 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
   auth.onAuthStateChanged(u => {
     me = u;
     if (profUnsub) { profUnsub(); profUnsub = null; }
+    if (cfgUnsub) { cfgUnsub(); cfgUnsub = null; }
     stopApp();
     profile = null;
     $("update-bar").hidden = true;
     if (!u) { dataState = "connecting"; askedFor = null; setAdmin(false); show("login-screen"); return; }
     waitScreen("Signing in…", "Checking your account.", false);
+    cfgUnsub = fdb.collection("config").doc("app").onSnapshot(snap => onAppConfig(u, snap), () => { /* older rules: no version limit */ });
     profUnsub = fdb.collection("users").doc(emailKey(u.email)).onSnapshot({ includeMetadataChanges: true }, snap => onProfile(u, snap), err => {
       waitScreen("Can't check your account", err.code === "permission-denied"
         ? "The database rules are out of date. Ask your admin to publish the latest rules (README step 3)."
@@ -1526,6 +1851,13 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
   });
 
   $("acc-btn").addEventListener("click", () => $("acc-panel").scrollIntoView({ behavior: "smooth" }));
+  $("minver-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const n = Math.max(0, parseInt($("minver").value, 10) || 0);
+    fdb.collection("config").doc("app").set({ minBuild: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) })
+      .then(() => setMsg($("minver-msg"), n ? `Saved. Phone apps older than version 1.0.${n} now have to update before they can continue.` : "Saved. Every app version is allowed.", "info"))
+      .catch(() => setMsg($("minver-msg"), "That didn't save. Check your connection and that the latest database rules are published.", "bad"));
+  });
   $("acc-form").addEventListener("submit", async e => {
     e.preventDefault();
     const btn = $("acc-add-btn"), email = emailKey($("acc-email").value), name = $("acc-name").value.trim();

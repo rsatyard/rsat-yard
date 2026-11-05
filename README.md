@@ -23,7 +23,8 @@ Setup takes about 30 minutes, once. You need two free accounts: **Firebase** (Go
 1. In the Firebase console, open **Build > Authentication > Get started**.
 2. Under **Sign-in method**, enable **Email/Password** and save.
 3. Under **Settings > User actions**, keep **Enable create (sign-up)** ticked. New logins can't see anything until an admin approves them in the app.
-4. The first person to sign in to the app gets a **Set me up as the admin** button. After that, manage everyone in the app under **Accounts**: add people, approve requests, change roles, turn accounts off and send password resets.
+4. Optional: to email the admin whenever someone asks for access, create a free EmailJS account and put its service ID, template ID and public key in `window.EMAILJS` in `firebase-config.js` (template fields `{{name}}`, `{{email}}`, `{{approve_link}}`; set its To Email to the admin's address). The email's Approve link opens the website and asks the admin to confirm.
+5. The first person to sign in to the app gets a **Set me up as the admin** button. After that, manage everyone in the app under **Accounts**: add people, approve requests, change roles, turn accounts off and send password resets.
 
 ## Step 3: Create the tank database and lock it down
 
@@ -58,7 +59,8 @@ The phone must be online for the first sign-in. After that the app opens and rec
 
 ## Daily use
 
-- **Scan with camera** (or tap a slot on the map): shows the tank in that slot. Free slot: enter the tank number (or scan its barcode), pick the status, save.
+- **Scan tank number**: point the camera at the number painted on the tank. The app reads it (4 letters + 7 digits, checked with the ISO check digit) and asks **OK** or **Edit**. A known tank opens its card; a new one is filled in, ready to park. Reading works offline (Tesseract, bundled in `lib/tesseract`). **Scan a slot QR label** is still available from the camera screen.
+- Tap a slot on the map (or scan its label): shows the tanks in that slot. Free slot: enter the tank number (or scan its barcode), pick the status, save.
 - **Change status** with one tap. **Move** a tank to another slot. **Gate out** when it leaves (tap twice to confirm).
 - Scan or type a **tank number** to find where it is.
 - Each slot holds up to **5 tanks** (A11, B11, C11, M15, N15 and O15 hold 4; change `SMALL_SLOTS` in `index.html` to adjust). Record the **customer** when parking a tank; edit it later from the tank's card.
