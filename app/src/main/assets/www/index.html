@@ -736,11 +736,15 @@ function saveDetails(id, customer, note) {
     history: withHistory(prev, { action: "Details updated", location: prev.location || prev.lastLocation, status: prev.status, customer }),
   }), `Saved details for ${fmtTank(id)}.`);
 }
+// Deleting a tank record removes its whole history, so only admins can do it (also enforced by firestore.rules).
+const amAdmin = () => !!profile && profile.role === "admin" && profile.status === "active";
 function deleteRecord(id) {
   if (!fdb) return;
+  if (!amAdmin()) { setMsg(regMsg, "Only an admin can delete tank records and their history.", "bad"); return; }
   fdb.collection("tanks").doc(id).delete()
     .then(() => setMsg(regMsg, `Deleted the record for ${fmtTank(id)}.`, "info"))
-    .catch(() => setMsg(regMsg, "That record couldn't be deleted. Try again.", "bad"));
+    .catch(e => setMsg(regMsg, e && e.code === "permission-denied" ? "Only an admin can delete tank records and their history."
+      : "That record couldn't be deleted. Try again.", "bad"));
 }
 
 // ---------- Yard map ----------
@@ -1337,7 +1341,7 @@ function renderRegister() {
       return `<tr>
         <td class="mono"><button type="button" class="linkish" data-act="open" data-id="${esc(t.tank)}">${esc(fmtTank(t.tank))}</button></td>
         <td>${esc(t.customer || "")}</td><td class="mono">${esc(t.lastLocation || "")}</td><td>${pill(t.status)}</td><td>${esc(fullDate(currentDateIn(t)))}</td><td>${esc(fullDate(t.gatedOutAt))}</td><td>${who(t.updatedBy)}</td>
-        <td><button type="button" class="small danger${isArmed ? " armed" : ""}" data-act="del" data-id="${esc(t.tank)}">${isArmed ? "Tap again to delete" : "Delete record"}</button></td>
+        <td>${amAdmin() ? `<button type="button" class="small danger${isArmed ? " armed" : ""}" data-act="del" data-id="${esc(t.tank)}">${isArmed ? "Tap again to delete" : "Delete record"}</button>` : ""}</td>
       </tr>`; }).join("")}</tbody>`;
   }
 }
@@ -1738,6 +1742,7 @@ function showLatestVersion() {
 function setAdmin(on) {
   $("acc-btn").hidden = !on;
   $("acc-panel").hidden = !on;
+  renderRegister(); // the Delete record buttons are for admins only
   if (on && !usersUnsub) {
     usersUnsub = fdb.collection("users").onSnapshot(snap => {
       accounts = snap.docs.map(d => d.data());
