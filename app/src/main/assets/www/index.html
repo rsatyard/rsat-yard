@@ -539,7 +539,7 @@ form.details { display: grid; gap: 8px; }
   <div id="ocr-view" class="ocr-view"><video id="ocr-video" playsinline muted></video><div class="ocr-guide"></div>
     <div class="ocr-zoom" role="group" aria-label="Camera zoom">
       <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-      <input type="range" id="zoom-range" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+      <input type="range" id="zoom-range" min="1" max="20" step="0.1" value="1" aria-label="Zoom">
       <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
       <output id="zoom-val">1.0×</output>
     </div></div>
@@ -1109,11 +1109,11 @@ const OCR_PASSES = [["11", OCR_CROP, 700], ["11", OCR_CROP, 1000], ["3", OCR_CRO
 function ocrFrame(video, box, maxW) {
   const vw = video.videoWidth, vh = video.videoHeight;
   // With screen zoom, only the middle 1/zoom of the picture is on screen, so read just that part.
-  const z = zoom.mode === "digital" ? zoom.value : 1;
+  const z = zoom.digital;
   const b = box.map(v => 0.5 + (v - 0.5) / z);
   const sx = vw * b[0], sy = vh * b[1], sw = vw * (b[2] - b[0]), sh = vh * (b[3] - b[1]);
-  // Small (zoomed-in) areas are enlarged up to 3 times so the letters are big enough to read.
-  const scale = Math.min(z > 1 ? 3 : 1, maxW / sw);
+  // Small (zoomed-in) areas are enlarged, up to 8 times, so the letters are big enough to read.
+  const scale = Math.min(z > 1.001 ? 8 : 1, maxW / sw);
   const c = document.createElement("canvas");
   c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
   const g = c.getContext("2d");
@@ -1163,7 +1163,9 @@ async function openTankCamera(target) {
       votes.set(c.id, v);
     });
     const ranked = [...votes.values()].sort((a, b) => b.pts - a.pts);
-    if (ranked.length && ranked[0].n >= 2) {
+    // Two matching reads are enough when the boxed check digit was read and matches; a number whose
+    // check digit had to be worked out needs four matching reads (tiny or blurry text is often misread).
+    if (ranked.length && ranked[0].n >= (ranked[0].checkOk ? 2 : 4)) {
       if (navigator.vibrate) navigator.vibrate(60);
       closeCamera();
       showTankConfirm(ranked);
@@ -1173,47 +1175,41 @@ async function openTankCamera(target) {
   }
 }
 // ---------- Camera zoom ----------
-// Uses the camera's own (optical or sensor) zoom when the phone offers it; otherwise enlarges the picture on screen.
+// Zoom goes from 1× to 20×. The camera's own (optical or sensor) zoom is used first, as far as the phone allows;
+// beyond that the picture is enlarged on screen ("digital" part) and the reader reads that enlarged middle part.
 // The last zoom is kept for the next scan.
-const zoom = { mode: "digital", value: 1, min: 1, max: 4, step: 0.1, track: null, last: 1 };
+const ZOOM_MAX = 20;
+const zoom = { value: 1, digital: 1, hw: null, track: null, last: 1 };
 const zoomRange = $("zoom-range");
+zoomRange.min = 1; zoomRange.max = ZOOM_MAX; zoomRange.step = 0.1;
 function setupZoom() {
   const track = ocrStream && ocrStream.getVideoTracks()[0];
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
   zoom.track = track || null;
-  if (caps.zoom && caps.zoom.max > caps.zoom.min) {
-    zoom.mode = "camera";
-    zoom.min = caps.zoom.min;
-    zoom.max = Math.min(caps.zoom.max, caps.zoom.min * 10);
-    zoom.step = caps.zoom.step > 0 ? Math.max(caps.zoom.step, 0.1) : 0.1;
-  } else {
-    zoom.mode = "digital"; zoom.min = 1; zoom.max = 4; zoom.step = 0.1;
-  }
-  zoomRange.min = zoom.min; zoomRange.max = zoom.max; zoomRange.step = zoom.step;
+  zoom.hw = caps.zoom && caps.zoom.max > caps.zoom.min ? { min: caps.zoom.min, max: caps.zoom.max } : null;
   zoom.value = NaN;
   setZoom(zoom.last);
 }
 function setZoom(z) {
-  z = +Math.min(zoom.max, Math.max(zoom.min, Math.round(z / zoom.step) * zoom.step)).toFixed(2);
+  z = +Math.min(ZOOM_MAX, Math.max(1, z)).toFixed(1);
   if (z === zoom.value) return;
   zoom.value = z;
   zoom.last = z;
   zoomRange.value = z;
-  $("zoom-val").textContent = (zoom.mode === "camera" ? z / zoom.min : z).toFixed(1) + "×";
-  const video = $("ocr-video");
-  if (zoom.mode === "camera") {
-    video.style.transform = "";
-    zoom.track.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {
-      // The phone refused camera zoom: fall back to enlarging the picture.
-      zoom.mode = "digital"; zoom.min = 1; zoom.max = 4; zoom.step = 0.1;
-      zoomRange.min = 1; zoomRange.max = 4; zoomRange.step = 0.1;
-      zoom.value = NaN; setZoom(1);
+  $("zoom-val").textContent = z.toFixed(1) + "×";
+  // Split the zoom between the camera (up to what it can do) and enlarging on screen.
+  const hwPart = zoom.hw ? Math.min(z, zoom.hw.max / zoom.hw.min) : 1;
+  zoom.digital = z / hwPart;
+  if (zoom.hw) {
+    zoom.track.applyConstraints({ advanced: [{ zoom: zoom.hw.min * hwPart }] }).catch(() => {
+      // The phone refused camera zoom: do it all by enlarging the picture.
+      zoom.hw = null; zoom.value = NaN; setZoom(z);
     });
-  } else {
-    video.style.transform = z > 1 ? `scale(${z})` : "";
   }
+  $("ocr-video").style.transform = zoom.digital > 1.001 ? `scale(${zoom.digital})` : "";
 }
-const zoomStep = dir => setZoom(zoom.value + dir * Math.max(zoom.step, (zoom.max - zoom.min) / 10));
+// + and − change the zoom by about a quarter each press, so small and large zooms both step smoothly.
+const zoomStep = dir => setZoom(dir > 0 ? Math.max(zoom.value * 1.25, zoom.value + 0.5) : Math.min(zoom.value / 1.25, zoom.value - 0.5));
 $("zoom-in").addEventListener("click", () => zoomStep(1));
 $("zoom-out").addEventListener("click", () => zoomStep(-1));
 zoomRange.addEventListener("input", () => setZoom(+zoomRange.value));
@@ -1254,7 +1250,7 @@ function showTankConfirm(found) {
   $("ocr-alts").innerHTML = alts.length ? `<span class="hint" style="width:100%">Or did you mean:</span>` +
     alts.map(c => `<button type="button" class="chip" data-alt="${esc(c.id)}">${esc(fmtTank(c.id))}</button>`).join("") : "";
   ocrCheckText();
-  if (best && !best.checkOk) $("ocr-check").textContent += " The small boxed digit wasn't clear, so it was worked out from the rest of the number.";
+  if (best && !best.checkOk) $("ocr-check").textContent += " The small boxed digit wasn't clear, so it was worked out from the rest of the number. Compare it with the tank, or zoom in and tap Scan again.";
   ocrConfirm.hidden = false;
   if (!best) ocrInput.focus();
 }
