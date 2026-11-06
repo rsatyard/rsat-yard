@@ -3,21 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1a1f1c">
+<meta name="theme-color" content="#13237a">
 <title>RSAT Yard</title>
+<link rel="icon" type="image/png" href="img/rsa-talke-logo.png">
 <style>
 /* Layout: sticky top bar; scan station beside the live yard map (stacked on phones); register, export, labels below. */
+/* Colours follow the RSA Talke logo: navy blue (#13237a) and red (#c4122f). */
 :root {
-  --bg: #eff1ed;
+  --brand-navy: #13237a;
+  --brand-red: #c4122f;
+  --bg: #eef1f6;
   --surface: #ffffff;
-  --slot: #e3e7e1;
-  --slot-hover: #d3d9d0;
-  --ink: #1a1f1c;
-  --muted: #5a645e;
-  --line: #d3d8d1;
-  --accent: #e3a01a;
-  --accent-soft: #fbedc9;
-  --on-accent: #1a1f1c;
+  --slot: #e2e7ef;
+  --slot-hover: #d2d9e5;
+  --ink: #141a2e;
+  --muted: #586079;
+  --line: #d0d7e2;
+  --accent: #1d3796;
+  --accent-soft: #dfe5f7;
+  --on-accent: #ffffff;
   --loaded: #2f5fa7;
   --loaded-soft: #dde7f6;
   --clean: #2a8553;
@@ -31,8 +35,8 @@
   --on-status: #ffffff;
   --bad: #b3361f;
   --bad-soft: #f8e1dc;
-  --bar: #1a1f1c;
-  --on-bar: #eff1ed;
+  --bar: #13237a;
+  --on-bar: #ffffff;
   --font-display: "Roboto Condensed", "Arial Narrow", sans-serif-condensed, sans-serif;
   --font-body: Roboto, "Segoe UI", system-ui, sans-serif;
   --font-mono: "Roboto Mono", Consolas, monospace;
@@ -40,13 +44,14 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141715; --surface: #1d211f; --slot: #272d29; --slot-hover: #323a35;
-    --ink: #e8ebe7; --muted: #9ca59f; --line: #343b36;
-    --accent: #f0b432; --accent-soft: #3d3216; --on-accent: #141715;
+    --brand-red: #ec4560;
+    --bg: #10131b; --surface: #191d28; --slot: #242a38; --slot-hover: #2f3647;
+    --ink: #e7eaf2; --muted: #9aa2b5; --line: #2f3646;
+    --accent: #8ea7ff; --accent-soft: #1f2a4d; --on-accent: #0b1020;
     --loaded: #78a3e6; --loaded-soft: #1f2d44; --clean: #62c98f; --clean-soft: #1b3426;
     --dirty: #dda068; --dirty-soft: #3b2a1b; --on-status: #141715;
     --gas-laden: #b48ae8; --gas-laden-soft: #2e2440; --gas-empty: #e3a6dc; --gas-empty-soft: #3a2639;
-    --bad: #f08a75; --bad-soft: #3d221c; --bar: #0d0f0e; --on-bar: #e8ebe7;
+    --bad: #f08a75; --bad-soft: #3d221c; --bar: #0c1433; --on-bar: #e7eaf2;
     color-scheme: dark;
   }
 }
@@ -61,10 +66,15 @@ h3 { font-size: 1.02rem; text-transform: uppercase; }
 .topbar {
   position: sticky; top: 0; z-index: 20; background: var(--bar); color: var(--on-bar);
   padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 3px solid var(--brand-red);
 }
 .topbar-inner { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
-.brand { font: 700 1.5rem/1 var(--font-display); text-transform: uppercase; }
-.brand span { color: var(--accent); }
+.brand { font: 700 1.5rem/1 var(--font-display); text-transform: uppercase; display: inline-flex; align-items: center; gap: 10px; }
+.brand span { color: var(--brand-red); }
+.topbar .brand span { color: var(--on-bar); }
+/* The logo has navy and red letters, so it always sits on a white tile (also in dark mode). */
+.brand .logo { height: 36px; width: auto; background: #fff; padding: 4px 8px; border-radius: 6px; display: block; }
+.gate .brand .logo { height: 48px; padding: 6px 10px; box-shadow: 0 0 0 1px var(--line); }
 .sync { font-size: 0.78rem; opacity: 0.85; display: inline-flex; align-items: center; gap: 6px; }
 .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sd, #888); }
 .sync.ok { --sd: #62c98f; } .sync.wait { --sd: #f0b432; } .sync.off { --sd: #f08a75; }
@@ -299,7 +309,7 @@ form.details { display: grid; gap: 8px; }
 .ocr-zoom button { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 0; background: #fff; color: #000; font: 700 1.4rem/1 var(--font-display); padding: 0; }
 .ocr-zoom input { flex: 1; min-width: 0; accent-color: var(--accent); height: 28px; }
 .ocr-zoom output { min-width: 3.4em; text-align: right; font: 700 0.95rem var(--font-mono); color: #fff; }
-.ocr-guide { position: absolute; left: 5%; right: 5%; top: 25%; bottom: 25%; border: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
+.ocr-guide { position: absolute; left: 5%; right: 5%; top: 25%; bottom: 25%; border: 3px solid #ec4560; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
 /* Confirm a scanned tank number */
 .confirm { display: grid; place-items: center; background: rgba(0,0,0,0.6); padding: 16px; grid-template-rows: none; }
 .confirm .sheet { width: min(440px, 100%); display: grid; gap: 12px; color: var(--ink); }
@@ -307,6 +317,60 @@ form.details { display: grid; gap: 8px; }
 .ocr-input[readonly] { background: var(--slot); border-color: transparent; }
 .confirm .acc-actions { justify-content: stretch; }
 .confirm .acc-actions button { flex: 1; padding: 12px; }
+
+/* ---------- RSA Talke look: navy panels and headers, red markers ---------- */
+@media (prefers-color-scheme: dark) { :root { --brand-navy: #23379a; } }
+/* Sign-in: navy background with a red glow, white card with a red top edge. */
+.gate { background: radial-gradient(90% 60% at 100% 0%, rgba(196,18,47,0.35), transparent 70%),
+  radial-gradient(70% 50% at 0% 100%, rgba(196,18,47,0.18), transparent 70%), linear-gradient(160deg, #13237a 0%, #0a1446 100%);
+  grid-template-rows: 1fr auto; gap: 16px; }
+.gate .panel { border: 0; border-top: 5px solid var(--brand-red); box-shadow: 0 24px 60px rgba(0,0,0,0.35); align-self: center; }
+.gate .brand { justify-content: space-between; }
+.gate::after { content: "RSA Talke · Yard tank tracking"; color: rgba(255,255,255,0.75); font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+/* Panels and section titles */
+.panel { box-shadow: 0 1px 2px rgba(19,35,122,0.06), 0 6px 18px rgba(19,35,122,0.06); }
+.wrap h2 { display: flex; align-items: center; gap: 10px; }
+.wrap h2::before { content: ""; flex: none; width: 5px; height: 1.05em; border-radius: 3px; background: var(--brand-red); }
+/* Totals: the main total is a navy tile */
+.stat { transition: transform 0.12s ease, box-shadow 0.12s ease; box-shadow: 0 1px 2px rgba(19,35,122,0.06); }
+.stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(19,35,122,0.12); background: var(--surface); }
+.stat.all { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); border-left-color: var(--brand-red); }
+.stat.all:hover { background: var(--brand-navy); }
+.stat.all .k { color: rgba(255,255,255,0.8); }
+/* Yard 1 / Yard 2: navy header band with a red line */
+.yard-card { padding: 0 0 12px; border-left-width: 1px; border-left-color: var(--line); overflow: hidden; gap: 10px; box-shadow: 0 1px 2px rgba(19,35,122,0.06); }
+.yard-card > * { padding: 0 12px; }
+.yard-card .yc-head { background: var(--brand-navy); color: #fff; padding: 8px 12px; border-bottom: 3px solid var(--brand-red); }
+.yard-card .yc-head span { color: rgba(255,255,255,0.8); }
+/* Tank or slot code badge */
+.code-big { background: var(--brand-navy); color: #fff; border-bottom: 4px solid var(--brand-red); }
+/* Yard map zone names */
+.zone-name { background: var(--brand-navy); color: #fff; border: 0; border-radius: 4px; padding: 3px 0 2px; }
+.zone-box.active .zone-name { background: var(--brand-red); }
+/* Tabs and the floating scan button */
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.fab { background: var(--brand-red); border-color: var(--brand-red); color: #fff; font-weight: 700; }
+.fab:hover { background: var(--brand-red); }
+/* Open / closed spaces: admins see closed spaces as hollow rings and a red dot where a request waits; a closed slot is striped. */
+.slot .dots i.x { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); opacity: 0.55; }
+.slot.closed { background: repeating-linear-gradient(135deg, var(--slot) 0 5px, var(--slot-hover) 5px 10px); color: var(--muted); }
+.slot.req::before { content: ""; position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand-red); box-shadow: 0 0 0 2px var(--surface); }
+.space-ctl { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 0.9rem; }
+.sc-line { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.sc-dots { display: inline-flex; gap: 4px; }
+.sc-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--slot-hover); }
+.sc-dots i.u { background: var(--accent); }
+.sc-dots i.x { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); opacity: 0.6; }
+.sc-ask label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; flex-wrap: wrap; }
+.sc-ask select { padding: 6px 8px; font-weight: 700; }
+.sc-req { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; background: var(--accent-soft); }
+.req-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.req-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.req-list li .actions { margin-left: auto; }
+#req-panel { border-top: 4px solid var(--brand-red); }
+/* Footer */
+.site-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; padding: 10px 0 4px; color: var(--muted); font-size: 0.8rem; text-align: center; }
+.site-foot img { height: 26px; background: #fff; padding: 3px 6px; border-radius: 5px; }
 </style>
 </head>
 <body>
@@ -314,7 +378,7 @@ form.details { display: grid; gap: 8px; }
 <!-- Setup needed -->
 <div class="gate" id="setup-screen" hidden>
   <div class="panel">
-    <div class="brand">RSAT <span>Yard</span></div>
+    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
     <h2>Connect a database</h2>
     <p>This copy of the app isn't connected to your tank database yet. Put your Firebase settings in <code>firebase-config.js</code>, as described in step 1 of the README.</p>
   </div>
@@ -323,7 +387,7 @@ form.details { display: grid; gap: 8px; }
 <!-- Sign in -->
 <div class="gate" id="login-screen" hidden>
   <div class="panel">
-    <div class="brand">RSAT <span>Yard</span></div>
+    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
     <p class="hint" id="login-intro">Tank tracking for the RSAT yard. Sign in with your account.</p>
     <form id="login-form" autocomplete="on">
       <label>Email <input id="login-email" type="email" autocomplete="username" required></label>
@@ -354,7 +418,7 @@ form.details { display: grid; gap: 8px; }
 <!-- Signed in, but not approved (or first-time setup) -->
 <div class="gate" id="wait-screen" hidden>
   <div class="panel">
-    <div class="brand">RSAT <span>Yard</span></div>
+    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
     <h2 id="wait-title">Waiting for approval</h2>
     <p id="wait-text"></p>
     <button class="primary" type="button" id="claim-btn" hidden>Set me up as the admin</button>
@@ -368,7 +432,7 @@ form.details { display: grid; gap: 8px; }
 <div id="app" hidden>
   <div class="topbar">
     <div class="topbar-inner">
-      <div class="brand">RSAT <span>Yard</span></div>
+      <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
       <span class="sync wait" id="sync-state">Connecting…</span>
       <div class="me"><span id="me-name"></span><button type="button" id="acc-btn" hidden>Accounts<span class="badge" id="acc-badge" hidden></span></button><button type="button" id="logout-btn">Sign out</button></div>
     </div>
@@ -380,6 +444,12 @@ form.details { display: grid; gap: 8px; }
     <p id="banner" class="msg info" hidden></p>
     <div class="stats" id="stats" role="group" aria-label="Yard totals"></div>
     <div class="yards" id="yards" aria-label="Totals per yard"></div>
+
+    <section class="panel" id="req-panel" aria-labelledby="req-title" hidden>
+      <h2 id="req-title">Requests for more space</h2>
+      <p class="hint">Staff asked for more space in these slots. Only admins can approve: Approve opens the spaces asked for, and staff then see them as free space.</p>
+      <ul class="req-list" id="req-list"></ul>
+    </section>
 
     <div class="main">
       <section class="panel scan" aria-labelledby="scan-title">
@@ -432,7 +502,7 @@ form.details { display: grid; gap: 8px; }
           </div>
         </div>
         <div class="map-scroll"><div class="yard" id="yard"></div></div>
-        <p class="hint">Each slot holds up to 5 tanks (4 in A11–C11 and M15–O15). Each dot is one space, colored by the tank in it; a dark border means full. Tap a slot to see or update its tanks. Swipe sideways to see the whole yard.</p>
+        <p class="hint">Each dot is one space you can use, colored by the tank in it; a dark border means full and a striped slot is closed. Tap a slot to see or update its tanks. Swipe sideways to see the whole yard.</p>
       </section>
     </div>
 
@@ -528,6 +598,12 @@ form.details { display: grid; gap: 8px; }
       <p class="hint" id="minver-latest"></p>
       <p id="minver-msg" class="msg" hidden style="margin-top:10px"></p>
     </section>
+
+    <footer class="site-foot">
+      <img src="img/rsa-talke-logo.png" alt="RSA Talke">
+      <span>RSAT Yard · tank tracking</span>
+      <span id="foot-ver"></span>
+    </footer>
   </div>
 
   <button class="primary fab" type="button" id="fab">Scan</button>
@@ -543,7 +619,7 @@ form.details { display: grid; gap: 8px; }
       <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
       <output id="zoom-val">1.0×</output>
     </div></div>
-  <footer><span id="cam-hint">Fit the tank number inside the yellow frame.</span><br><span id="cam-err"></span><br>
+  <footer><span id="cam-hint">Fit the tank number inside the red frame.</span><br><span id="cam-err"></span><br>
     <button type="button" class="linkish" id="cam-type">Type the number instead</button></footer>
 </div>
 
@@ -580,8 +656,10 @@ const BLOCKS = [
   { section: "Middle", rows: 5, zones: [1, 2, 3, 4, 5], firstRow: 10 },
   { section: "Bottom", rows: 3, zones: [11, 12, 13, 14, 15], firstRow: 18 },
 ];
+// The middle group (zones 8, 3 and 13) used to have 4 columns with an aisle; it now has 5 full columns like
+// its neighbours. Slots A–T (A–L in zone 13) keep their codes; the new fifth column adds U–Y (M–O in zone 13).
 const GROUP_COLS = [
-  ["B", "C", "D", "E", "F"], ["H", "I", "J", "K", "L"], ["N", "O", "Q", "R"],
+  ["B", "C", "D", "E", "F"], ["H", "I", "J", "K", "L"], ["N", "O", "P", "Q", "R"],
   ["T", "U", "V", "W", "X"], ["Z", "AA", "AB", "AC", "AD"],
 ];
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXY";
@@ -609,8 +687,19 @@ const at = (z, col, row) => {
 const STATUS = { loaded: "Loaded", empty_clean: "Empty clean", empty_dirty: "Empty dirty", gas_laden: "Gas tank laden", gas_empty: "Gas tank empty" };
 const CAPACITY = 5; // tanks per slot, except the smaller slots below
 const SMALL_SLOTS = { A11: 4, B11: 4, C11: 4, M15: 4, N15: 4, O15: 4 };
-const capOf = code => SMALL_SLOTS[code] || CAPACITY;
-const TOTAL_SPACES = SLOT_ORDER.reduce((n, code) => n + capOf(code), 0);
+// Open and closed spaces: every slot has room for MAX_SPACES tanks, but only its OPEN spaces can be used.
+// By default all spaces are open (the small slots above have 4 open and 1 closed). Admins open or close spaces
+// per slot (collection "slots", id = slot code, field open = number of open spaces). Staff only ever see the
+// open spaces (a slot with 2 open shows as a 2-space slot) and can ask for more (collection "slotRequests");
+// only an admin can approve.
+const MAX_SPACES = 5;
+const defaultOpen = code => SMALL_SLOTS[code] || CAPACITY;
+let slotCfg = new Map(), slotReqs = new Map();
+const capOf = code => {
+  const c = slotCfg.get(code);
+  return c && Number.isInteger(c.open) ? Math.max(0, Math.min(MAX_SPACES, c.open)) : defaultOpen(code);
+};
+const openSpaces = codes => codes.reduce((n, code) => n + capOf(code), 0);
 
 // ---------- Helpers ----------
 const $ = id => document.getElementById(id);
@@ -779,7 +868,9 @@ yardEl.addEventListener("click", e => {
 
 // Each slot shows its code and one dot per tank space, colored by that tank's status.
 const slotInner = (code, list) => `<span>${code}</span><span class="dots" aria-hidden="true">${
-  Array.from({ length: capOf(code) }, (_, i) => `<i class="${list[i] ? list[i].status : "e"}"></i>`).join("")}</span>`;
+  // Admins see all 5 spaces (closed ones as hollow rings); staff see only the open spaces.
+  Array.from({ length: Math.max(amAdmin() ? MAX_SPACES : capOf(code), list.length) }, (_, i) =>
+    `<i class="${list[i] ? list[i].status : i < capOf(code) ? "e" : "x"}"></i>`).join("")}</span>`;
 
 function renderMap() {
   const byCode = {};
@@ -790,11 +881,14 @@ function renderMap() {
     const el = slotEls[code];
     const list = (byCode[code] || []).sort((a, b) => (a.statusSince || "").localeCompare(b.statusSince || ""));
     const cap = capOf(code);
-    el.className = "slot" + (list.length >= cap ? " full" : "") + (code === hitCode ? " hit" : "");
+    const admin = amAdmin();
+    el.className = "slot" + (cap === 0 && !list.length ? " closed" : list.length >= cap ? " full" : "") + (code === hitCode ? " hit" : "") + (admin && slotReqs.has(code) ? " req" : "");
     el.innerHTML = slotInner(code, list);
     const match = filter === "free" ? list.length < cap : filter === "all" ? list.length > 0 : list.some(t => t.status === filter);
     el.classList.toggle("match", !!filter && match);
-    el.setAttribute("aria-label", `Slot ${code}, ${list.length} of ${cap} tanks` + (list.length ? ": " + list.map(t => `${fmtTank(t.tank)} ${STATUS[t.status]}`).join(", ") : ""));
+    el.setAttribute("aria-label", (cap === 0 && !list.length ? `Slot ${code}, closed` : `Slot ${code}, ${list.length} of ${cap} tanks`) +
+      (admin && cap < MAX_SPACES ? `, ${MAX_SPACES - cap} closed spaces` : "") + (admin && slotReqs.has(code) ? ", request waiting" : "") +
+      (list.length ? ": " + list.map(t => `${fmtTank(t.tank)} ${STATUS[t.status]}`).join(", ") : ""));
   }
 }
 
@@ -813,19 +907,21 @@ function renderStats() {
     ["empty_dirty", list.filter(t => t.status === "empty_dirty").length, "Empty dirty"],
     ["gas_laden", list.filter(t => t.status === "gas_laden").length, "Gas tank laden"],
     ["gas_empty", list.filter(t => t.status === "gas_empty").length, "Gas tank empty"],
-    ["free", free, `Free spaces of ${TOTAL_SPACES.toLocaleString()}`],
+    ["free", free, `Free spaces of ${openSpaces(SLOT_ORDER).toLocaleString()}`],
   ];
   statsEl.innerHTML = items.map(([k, n, label]) =>
     `<button type="button" class="stat ${k}" data-filter="${k}" aria-pressed="${filter === k}"><span class="n">${dataState === "connecting" ? "–" : n}</span><span class="k">${label}</span></button>`).join("");
   renderYards(list, perSlot);
 }
+$("foot-ver").textContent = window.APP_BUILD ? `Version 1.0.${window.APP_BUILD}` : "";
 // Separate counts for each yard.
 const YARDS = [{ name: "Yard 1", label: "Zones 1–10", from: 1, to: 10 }, { name: "Yard 2", label: "Zones 11–15", from: 11, to: 15 }];
 function renderYards(list, perSlot) {
   const show = n => dataState === "connecting" ? "–" : n.toLocaleString();
   $("yards").innerHTML = YARDS.map(y => {
     const codes = SLOT_ORDER.filter(code => SLOTS[code].zone >= y.from && SLOTS[code].zone <= y.to);
-    const spaces = codes.reduce((n, code) => n + capOf(code), 0);
+    const spaces = openSpaces(codes);
+    const closed = codes.length * MAX_SPACES - spaces;
     const free = codes.reduce((n, code) => n + Math.max(0, capOf(code) - (perSlot[code] || 0)), 0);
     const here = list.filter(t => SLOTS[t.location] && SLOTS[t.location].zone >= y.from && SLOTS[t.location].zone <= y.to);
     return `<section class="yard-card">
@@ -833,6 +929,7 @@ function renderYards(list, perSlot) {
       <div class="yc-main">
         <div><span class="n">${show(here.length)}</span><span class="k">Tanks</span></div>
         <div><span class="n">${show(free)}</span><span class="k">Free of ${spaces.toLocaleString()} spaces</span></div>
+        ${amAdmin() ? `<div><span class="n">${show(closed)}</span><span class="k">Closed spaces</span></div>` : ""}
       </div>
       <div class="yc-status">${Object.keys(STATUS).map(st =>
         `<span><i class="dot ${st}"></i>${STATUS[st]} <b>${show(here.filter(t => t.status === st).length)}</b></span>`).join("")}</div>
@@ -891,6 +988,40 @@ function gateButton(t) {
   return `<button type="button" class="small danger${isArmed ? " armed" : ""}" data-act="gate" data-id="${esc(t.tank)}">${isArmed ? "Tap again to gate out" : "Gate out"}</button>`;
 }
 
+// Spaces box on a slot card. Admins see all 5 spaces and open, close or lock them, and approve requests.
+// Staff never see closed spaces or how many a slot can hold; they can only ask an admin for more space.
+const reqSpaces = r => Math.max(1, Math.min(MAX_SPACES, Number.isInteger(r && r.spaces) ? r.spaces : 1));
+const spacesText = n => `${n} space${n === 1 ? "" : "s"}`;
+const reqPick = new Map(); // how many spaces staff picked, kept while the card redraws
+document.addEventListener("change", e => { if (e.target.classList.contains("req-n")) reqPick.set(e.target.dataset.code, +e.target.value); });
+function spaceControls(code, used) {
+  const cap = capOf(code), closed = MAX_SPACES - cap, req = slotReqs.get(code);
+  if (amAdmin()) {
+    const dots = Array.from({ length: MAX_SPACES }, (_, i) => `<i class="${i < used ? "u" : i < cap ? "e" : "x"}"></i>`).join("");
+    let body = `<div class="sc-line"><span class="sc-dots" aria-hidden="true">${dots}</span><span><b>${cap}</b> of ${MAX_SPACES} spaces open${closed ? ` · <b>${closed}</b> closed` : ""}</span><span class="hint">(staff see only the open spaces)</span></div>`;
+    if (req) {
+      const n = Math.min(reqSpaces(req), closed);
+      body += `<div class="sc-req"><span><b>${who(req.by)}</b> asked for <b>${moreText(reqSpaces(req))}</b> ${when(req.at)}.</span>
+        <span class="actions"><button type="button" class="small primary" data-act="req-approve" data-code="${code}" ${n < 1 ? "disabled" : ""}>Approve: open ${spacesText(n)}</button>
+        <button type="button" class="small danger" data-act="req-reject" data-code="${code}">Reject</button></span></div>`;
+    }
+    body += `<div class="actions">
+      <button type="button" class="small" data-act="space-lock" data-code="${code}" ${cap <= used ? "disabled" : ""}>Lock slot</button>
+      <button type="button" class="small" data-act="space-close" data-code="${code}" ${cap <= used ? "disabled" : ""}>Close a space</button>
+      <button type="button" class="small primary" data-act="space-open" data-code="${code}" ${cap >= MAX_SPACES ? "disabled" : ""}>Open a space</button>
+      <button type="button" class="small primary" data-act="space-all" data-code="${code}" ${cap >= MAX_SPACES ? "disabled" : ""}>Open all</button>
+    </div>${cap <= used && cap > 0 ? `<p class="hint">Spaces with a tank in them can't be closed. Move or gate out the tank first.</p>` : ""}`;
+    return `<div class="space-ctl">${body}</div>`;
+  }
+  if (req) return `<div class="space-ctl"><div class="sc-req"><span>Waiting for an admin to approve ${moreText(reqSpaces(req))} (asked by ${who(req.by)} ${when(req.at)}).</span>
+    ${req.by === emailKey(me.email) ? `<button type="button" class="small" data-act="req-cancel" data-code="${code}">Cancel request</button>` : ""}</div></div>`;
+  if (cap >= MAX_SPACES) return "";
+  const pick = reqPick.get(code) || 1;
+  return `<div class="space-ctl"><div class="actions sc-ask"><label>Need more space? Ask for <select class="req-n" data-code="${code}" aria-label="How many more spaces">${
+    Array.from({ length: MAX_SPACES }, (_, i) => `<option value="${i + 1}" ${i + 1 === pick ? "selected" : ""}>${i + 1}</option>`).join("")}</select> more</label>
+    <button type="button" class="small primary" data-act="req-ask" data-code="${code}">Ask admin</button></div></div>`;
+}
+
 function renderSlotView(s) {
   const here = tanksAt(s.code);
   const cap = capOf(s.code);
@@ -903,8 +1034,9 @@ function renderSlotView(s) {
         ${view.example ? `<div class="hint">Showing A1. Tap the map or type a slot to pick another one.</div>` : ""}
       </div>
     </div>
+    ${spaceControls(s.code, here.length)}
     <div style="display:grid;gap:8px">
-      <span class="eyebrow">${here.length} of ${cap} tanks in this slot${here.length >= cap ? " · full" : ""}</span>
+      <span class="eyebrow">${cap === 0 && !here.length ? "This slot is closed" : `${here.length} of ${cap} tanks in this slot${here.length >= cap ? " · full" : ""}`}</span>
       ${here.length ? here.map(t => `
         <div class="tank-row">
           <div class="line1">
@@ -914,7 +1046,9 @@ function renderSlotView(s) {
           <div class="meta">${t.customer ? esc(t.customer) + " · " : ""}${esc(STATUS[t.status])} since ${when(t.statusSince)} · by ${who(t.updatedBy)}${t.note ? " · " + esc(t.note) : ""}</div>
           <div class="actions">${statusButtons(t)}${gateButton(t)}</div>
         </div>`).join("") : `<p class="empty-note">${dataState === "connecting" ? "Loading tank records…" : "No tank is recorded at " + s.code + "."}</p>`}
-      ${here.length >= cap ? `<p class="empty-note">This slot is full. Move or gate out a tank to make space.</p>` : ""}
+      ${here.length >= cap ? `<p class="empty-note">${cap === 0
+        ? (amAdmin() ? "All spaces in this slot are closed. Open spaces above to let staff park here." : "This slot is closed. Ask an admin if you need space here.")
+        : "This slot is full. Move or gate out a tank to make space" + (cap < MAX_SPACES ? (amAdmin() ? ", or open a closed space above." : ", or ask an admin for more space.") : ".")}</p>` : ""}
     </div>`;
   addForm.hidden = here.length >= cap;
   $("add-title").textContent = `Park a tank at ${s.code} · ${cap - here.length} of ${cap} spaces free`;
@@ -1017,8 +1151,67 @@ document.addEventListener("click", e => {
     case "slot": view = { type: "slot", code: b.dataset.code }; setMsg(msgEl, ""); renderView(); $("scan-title").scrollIntoView({ behavior: "smooth" }); break;
     case "gate": if (armed === "gate:" + id) { armed = null; gateOut(id); } else arm("gate:" + id); break;
     case "del": if (armed === "del:" + id) { armed = null; deleteRecord(id); } else arm("del:" + id); break;
+    case "space-open": setOpenSpaces(b.dataset.code, capOf(b.dataset.code) + 1); break;
+    case "space-close": setOpenSpaces(b.dataset.code, capOf(b.dataset.code) - 1); break;
+    case "space-lock": setOpenSpaces(b.dataset.code, tanksAt(b.dataset.code).length); break;
+    case "space-all": setOpenSpaces(b.dataset.code, MAX_SPACES); break;
+    case "req-ask": askForSpace(b.dataset.code); break;
+    case "req-approve": approveRequest(b.dataset.code); break;
+    case "req-reject": case "req-cancel": dropRequest(b.dataset.code, b.dataset.act === "req-reject"); break;
   }
 });
+
+// ---------- Open / closed spaces (admins) and requests for more space (staff) ----------
+const slotMsg = text => setMsg(msgEl, text, "bad");
+const slotErr = err => err && err.code === "permission-denied"
+  ? "Not allowed. Only admins can open or close spaces, and the latest database rules must be published in Firebase."
+  : "That didn't save. Check your connection and try again.";
+function setOpenSpaces(code, n) {
+  if (!amAdmin()) { slotMsg("Only an admin can open or close spaces."); return; }
+  const used = tanksAt(code).length;
+  n = Math.max(0, Math.min(MAX_SPACES, n));
+  if (n < used) { slotMsg(`${code} has ${used} tank${used === 1 ? "" : "s"} in it, so at least ${used} space${used === 1 ? "" : "s"} must stay open.`); return; }
+  fdb.collection("slots").doc(code).set({ code, open: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) })
+    .catch(err => slotMsg(slotErr(err)));
+  setMsg(msgEl, n ? `${code}: ${n} of ${MAX_SPACES} spaces open.` : `${code} is locked. Staff can't park here until you open spaces again.`, "info");
+}
+function askForSpace(code) {
+  if (slotReqs.has(code)) return;
+  const sel = document.querySelector(`.req-n[data-code="${code}"]`);
+  const spaces = Math.max(1, Math.min(MAX_SPACES, sel ? +sel.value : 1));
+  fdb.collection("slotRequests").doc(code).set({ code, by: emailKey(me.email), name: (profile && profile.name) || person(me.email), at: new Date().toISOString(), spaces })
+    .then(() => { reqPick.delete(code); setMsg(msgEl, `Asked an admin for ${moreText(spaces)} at ${code}.`, "info"); })
+    .catch(err => slotMsg(err && err.code === "permission-denied"
+      ? "The request couldn't be sent. Ask your admin to publish the latest database rules in Firebase." : slotErr(err)));
+}
+function approveRequest(code) {
+  if (!amAdmin()) return;
+  const n = Math.min(MAX_SPACES, capOf(code) + reqSpaces(slotReqs.get(code)));
+  const batch = fdb.batch();
+  batch.set(fdb.collection("slots").doc(code), { code, open: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) });
+  batch.delete(fdb.collection("slotRequests").doc(code));
+  batch.commit().catch(err => slotMsg(slotErr(err)));
+  setMsg(msgEl, `Approved: ${code} now has ${n} of ${MAX_SPACES} spaces open.`, "info");
+}
+function dropRequest(code, rejected) {
+  fdb.collection("slotRequests").doc(code).delete().catch(err => slotMsg(slotErr(err)));
+  setMsg(msgEl, rejected ? `Rejected the request for ${code}.` : `Cancelled your request for ${code}.`, "info");
+}
+// Admins see every waiting request at the top of the page.
+function renderRequests() {
+  const panel = $("req-panel");
+  const list = [...slotReqs.values()].filter(r => SLOTS[r.code]).sort((a, b) => (a.at || "").localeCompare(b.at || ""));
+  panel.hidden = !amAdmin() || !list.length;
+  if (panel.hidden) return;
+  $("req-list").innerHTML = list.map(r => {
+    const cap = capOf(r.code), n = Math.min(reqSpaces(r), MAX_SPACES - cap);
+    return `<li><button type="button" class="linkish mono" data-act="slot" data-code="${esc(r.code)}">${esc(r.code)}</button>
+      <span><b>${moreText(reqSpaces(r))}</b> <span class="hint">· ${who(r.by)} · ${when(r.at)} · now ${cap} of ${MAX_SPACES} open</span></span>
+      <span class="actions"><button type="button" class="small primary" data-act="req-approve" data-code="${esc(r.code)}" ${n < 1 ? "disabled" : ""}>Approve (open ${n})</button>
+      <button type="button" class="small danger" data-act="req-reject" data-code="${esc(r.code)}">Reject</button></span></li>`;
+  }).join("");
+}
+
 document.addEventListener("submit", e => {
   if (e.target.id !== "details-form") return;
   e.preventDefault();
@@ -1129,7 +1322,7 @@ async function openTankCamera(target) {
   camTarget = target;
   const run = ++ocrRun;
   $("cam-title").textContent = "Scan tank number";
-  $("cam-hint").textContent = "Fit the tank number (4 letters + 7 digits) inside the yellow frame and hold steady.";
+  $("cam-hint").textContent = "Fit the tank number (4 letters + 7 digits) inside the red frame and hold steady.";
   $("cam-err").textContent = "";
   camera.hidden = false;
   const video = $("ocr-video");
@@ -1155,7 +1348,7 @@ async function openTankCamera(target) {
   let tries = 0;
   while (run === ocrRun && !camera.hidden) {
     if (!video.videoWidth) { await new Promise(r => setTimeout(r, 200)); continue; }
-    $("cam-hint").textContent = tries < 8 ? "Reading… fit the tank number inside the yellow frame and hold steady."
+    $("cam-hint").textContent = tries < 8 ? "Reading… fit the tank number inside the red frame and hold steady."
       : "Still looking. Zoom in (+ or pinch) or move closer so the number fills the frame, and avoid glare.";
     const [psm, box, maxW] = OCR_PASSES[tries % OCR_PASSES.length];
     await w.setParameters({ tessedit_pageseg_mode: psm });
@@ -1346,7 +1539,7 @@ function renderRegister() {
   }
 }
 
-function renderData() { renderStats(); renderView(); renderRegister(); renderExport(); }
+function renderData() { renderStats(); renderView(); renderRegister(); renderExport(); renderRequests(); }
 
 // ---------- Export settings ----------
 // Web/app adapters: files go to the download or share sheet; people are shown by email name.
@@ -1648,10 +1841,25 @@ const ROLE = { staff: "Staff", admin: "Admin" };
 const ACC_STATUS = { pending: "Waiting for approval", active: "Active", disabled: "Turned off" };
 const accMsg = $("acc-msg");
 
+let slotsUnsub = null, reqsUnsub = null;
 function stopApp() {
   if (unsub) { unsub(); unsub = null; }
   if (usersUnsub) { usersUnsub(); usersUnsub = null; }
-  tanks = new Map(); accounts = [];
+  if (slotsUnsub) { slotsUnsub(); slotsUnsub = null; }
+  if (reqsUnsub) { reqsUnsub(); reqsUnsub = null; }
+  tanks = new Map(); accounts = []; slotCfg = new Map(); slotReqs = new Map();
+}
+// Open spaces and requests. Only slots an admin has changed have a record, so these stay small.
+// If the database rules are older than this feature, reading fails and every slot keeps its usual spaces.
+function watchSlots() {
+  slotsUnsub = fdb.collection("slots").onSnapshot(snap => {
+    slotCfg = new Map(snap.docs.map(d => [d.id, d.data()]));
+    renderData();
+  }, () => { slotCfg = new Map(); renderData(); });
+  reqsUnsub = fdb.collection("slotRequests").onSnapshot(snap => {
+    slotReqs = new Map(snap.docs.map(d => [d.id, d.data()]));
+    renderData();
+  }, () => { slotReqs = new Map(); renderData(); });
 }
 function startApp(u) {
   show("app");
@@ -1669,6 +1877,7 @@ function startApp(u) {
       : "Tank records stopped updating. Sign out and back in.", "bad");
     setSync(); renderData();
   });
+  watchSlots();
   checkForUpdate();
 }
 async function onProfile(u, snap) {
@@ -1742,7 +1951,7 @@ function showLatestVersion() {
 function setAdmin(on) {
   $("acc-btn").hidden = !on;
   $("acc-panel").hidden = !on;
-  renderRegister(); // the Delete record buttons are for admins only
+  renderData(); // Delete record, closed spaces, open/close and requests are for admins only
   if (on && !usersUnsub) {
     usersUnsub = fdb.collection("users").onSnapshot(snap => {
       accounts = snap.docs.map(d => d.data());
@@ -1947,7 +2156,7 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     } catch (err) {
       const c = String(err.code || "");
       setMsg(accMsg, c.includes("admin-restricted") || c.includes("operation-not-allowed")
-        ? "Firebase blocks new logins. In Firebase, open Authentication > Settings > User actions and tick Enable create (sign-up). Or leave the password empty."
+        ? "Firebase blocks new logins, so nobody can be added or sign up. In the Firebase console, open Authentication > Settings > User actions, tick Enable create (sign-up) and click Save, then try again."
         : c.startsWith("auth/") ? authError(err) : "The account couldn't be added. Check your connection and try again.", "bad");
     } finally { btn.disabled = false; }
   });

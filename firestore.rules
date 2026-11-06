@@ -14,8 +14,10 @@ service cloud.firestore {
         && d.role in ['admin', 'staff'] && d.status in ['pending', 'active', 'disabled'];
     }
 
+    // Staff and admins record and change tanks; only admins can delete a tank record (and with it, its history).
     match /tanks/{tank} {
-      allow read, write: if active();
+      allow read, create, update: if active();
+      allow delete: if isAdmin();
     }
 
     match /users/{email} {
@@ -35,6 +37,26 @@ service cloud.firestore {
       allow update: if isAdmin() && email != myEmail() && validProfile(request.resource.data)
         && request.resource.data.email == email && email != get(ownerDoc()).data.email;
       allow delete: if isAdmin() && email != myEmail() && email != get(ownerDoc()).data.email;
+    }
+
+    // Open spaces per slot (id = slot code, e.g. A10). Everyone signed in reads; only admins open or close spaces.
+    match /slots/{code} {
+      allow read: if active();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['code', 'open', 'updatedAt', 'updatedBy'])
+        && request.resource.data.code == code
+        && request.resource.data.open is int && request.resource.data.open >= 0 && request.resource.data.open <= 5;
+      allow delete: if isAdmin();
+    }
+
+    // A request for more space in a slot (one per slot, 1-5 spaces). Staff ask; only admins approve (by opening spaces) or reject.
+    match /slotRequests/{code} {
+      allow read: if active();
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['code', 'by', 'name', 'at', 'spaces'])
+        && request.resource.data.code == code && request.resource.data.by == myEmail()
+        && request.resource.data.spaces is int && request.resource.data.spaces >= 1 && request.resource.data.spaces <= 5;
+      allow delete: if isAdmin() || (active() && resource.data.by == myEmail());
     }
 
     // Oldest phone-app build allowed (set by admins under Accounts).

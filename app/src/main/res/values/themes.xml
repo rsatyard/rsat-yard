@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Light theme; values-night switches to dark so the page's colors follow the phone setting. -->
+    <!-- Light theme; values-night switches to dark so the page's colors follow the phone setting.
+         Colours follow the RSA Talke logo (navy #13237a). -->
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#1a1f1c</item>
-        <item name="android:navigationBarColor">#eff1ed</item>
+        <item name="android:statusBarColor">#13237a</item>
+        <item name="android:navigationBarColor">#eef1f6</item>
         <item name="android:windowBackground">@color/bg</item>
     </style>
-    <color name="bg">#eff1ed</color>
-    <color name="launcher_bg">#1a1f1c</color>
+    <color name="bg">#eef1f6</color>
+    <color name="launcher_bg">#13237a</color>
 </resources>
