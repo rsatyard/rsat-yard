@@ -732,10 +732,9 @@ const ISO_VAL = (() => { const m = {}; let v = 10; for (const ch of "ABCDEFGHIJK
 // ISO 6346 container check digit: null when the number isn't in ISO form.
 function isoCheckOk(id) {
   if (!/^[A-Z]{4}\d{7}$/.test(id)) return null;
-  let sum = 0;
-  for (let i = 0; i < 10; i++) sum += (/\d/.test(id[i]) ? +id[i] : ISO_VAL[id[i]]) * 2 ** i;
-  return (sum % 11) % 10 === +id[10];
+  return isoDigit(id) === +id[10];
 }
+const checkDigitMsg = id => `Wrong tank number: the last digit of ${id.slice(0, 10)}_ should be ${isoDigit(id)}, not ${id[10]}. Check the number on the tank.`;
 function ago(iso) {
   if (!iso) return "";
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -1294,7 +1293,7 @@ function updateAddWarn() {
   const notes = [];
   if (id) {
     const ok = isoCheckOk(id);
-    if (ok === false) notes.push(`Check digit doesn't match for ${fmtTank(id)}. Double-check the number.`);
+    if (ok === false) notes.push(tanks.has(id) ? `Check digit doesn't match for ${fmtTank(id)}. Double-check the number.` : checkDigitMsg(id) + " It can't be saved.");
     if (ok === null) notes.push(`${11 - id.length} more character${11 - id.length === 1 ? "" : "s"} needed: tank numbers are 4 letters + 7 digits.`);
     const prev = tanks.get(id);
     if (prev && prev.inYard && prev.outside && !prev.location && view.type === "slot") notes.push(`${fmtTank(id)} is outside the yard (${activityText(prev)}). Saving brings it back to ${view.code}.`);
@@ -1327,6 +1326,8 @@ addForm.addEventListener("submit", e => {
   const id = normTank(tankInput.value);
   if (!id) { setMsg(msgEl, "Enter the tank number first.", "bad"); tankInput.focus(); return; }
   if (!TANK_RE.test(id)) { setMsg(msgEl, tankFormatMsg(id), "bad"); tankInput.focus(); return; }
+  // A new tank must pass the ISO 6346 check digit (same as bic-code.org). Tanks already recorded can still be updated.
+  if (isoCheckOk(id) === false && !tanks.has(id)) { setMsg(msgEl, checkDigitMsg(id), "bad"); tankInput.focus(); return; }
   const status = addForm.querySelector('input[name="add-status"]:checked').value;
   const prev = tanks.get(id);
   const note = noteInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.note : "");
@@ -1473,7 +1474,7 @@ function closeCamera() {
 const LETTER_ALTS = { "0": "OD", "1": "IL", "2": "ZA", "3": "B", "4": "A", "5": "S", "6": "G", "7": "T", "8": "B",
   I: "J", J: "I", L: "I", O: "DQ", D: "O", Q: "O", V: "U", H: "N", N: "H", M: "N", K: "X", X: "K" };
 const DIGIT_ALTS = { O: "0", Q: "0", D: "0", U: "0", I: "1", L: "1", J: "1", T: "7", Z: "2", S: "5", B: "8", G: "6", A: "4", "7": "1", "1": "7" };
-const isoDigit = id10 => { let sum = 0; for (let i = 0; i < 10; i++) sum += (/\d/.test(id10[i]) ? +id10[i] : ISO_VAL[id10[i]]) * 2 ** i; return (sum % 11) % 10; };
+function isoDigit(id10) { let sum = 0; for (let i = 0; i < 10; i++) sum += (/\d/.test(id10[i]) ? +id10[i] : ISO_VAL[id10[i]]) * 2 ** i; return (sum % 11) % 10; };
 // Every way to read some characters as letters or digits: [text, characters changed].
 function readsAs(raw, isOk, alts) {
   let reads = [["", 0]];
