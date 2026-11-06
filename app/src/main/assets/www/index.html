@@ -1288,6 +1288,7 @@ function renderView() {
   renderMap();
 }
 
+const inYardMsg = (id, t) => `${fmtTank(id)} is already in the yard at ${t.location}${view.type === "slot" && t.location === view.code ? " (this slot)" : ""}. It can't be added twice: to move it, open ${t.location} and use Move.`;
 function updateAddWarn() {
   const id = normTank(tankInput.value);
   const notes = [];
@@ -1297,8 +1298,7 @@ function updateAddWarn() {
     if (ok === null) notes.push(`${11 - id.length} more character${11 - id.length === 1 ? "" : "s"} needed: tank numbers are 4 letters + 7 digits.`);
     const prev = tanks.get(id);
     if (prev && prev.inYard && prev.outside && !prev.location && view.type === "slot") notes.push(`${fmtTank(id)} is outside the yard (${activityText(prev)}). Saving brings it back to ${view.code}.`);
-    else if (prev && prev.inYard && view.type === "slot" && prev.location !== view.code) notes.push(`${fmtTank(id)} is recorded at ${prev.location}. Saving moves it to ${view.code}.`);
-    if (prev && prev.inYard && view.type === "slot" && prev.location === view.code) notes.push(`${fmtTank(id)} is already here. Saving updates its status and note.`);
+    else if (prev && prev.inYard && prev.location) notes.push(inYardMsg(id, prev));
     if (prev && !prev.inYard) notes.push(`${fmtTank(id)} was gated out ${ago(prev.gatedOutAt)}. Saving gates it back in.`);
   }
   addWarn.hidden = !notes.length;
@@ -1328,8 +1328,10 @@ addForm.addEventListener("submit", e => {
   if (!TANK_RE.test(id)) { setMsg(msgEl, tankFormatMsg(id), "bad"); tankInput.focus(); return; }
   // A new tank must pass the ISO 6346 check digit (same as bic-code.org). Tanks already recorded can still be updated.
   if (isoCheckOk(id) === false && !tanks.has(id)) { setMsg(msgEl, checkDigitMsg(id), "bad"); tankInput.focus(); return; }
-  const status = addForm.querySelector('input[name="add-status"]:checked').value;
   const prev = tanks.get(id);
+  // No duplicates: a tank already parked in the yard isn't parked again here (use Move on its card instead).
+  if (prev && prev.inYard && prev.location) { setMsg(msgEl, inYardMsg(id, prev), "bad"); tankInput.focus(); return; }
+  const status = addForm.querySelector('input[name="add-status"]:checked').value;
   const note = noteInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.note : "");
   const customer = customerInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.customer || "" : "");
   if (parkTank(id, view.code, status, note, customer)) { tankInput.value = ""; noteInput.value = ""; customerInput.value = ""; updateAddWarn(); renderData(); }
