@@ -369,6 +369,11 @@ form.details { display: grid; gap: 8px; }
 /* Yard map zone names */
 .zone-name { background: var(--brand-navy); color: #fff; border: 0; border-radius: 4px; padding: 3px 0 2px; }
 .zone-box.active .zone-name { background: var(--brand-red); }
+/* Top and bottom sections: zone names under the slots (facing the road); the middle keeps them on top.
+   A wider gap between the middle and bottom sections, like the road in the yard. */
+.block-top .zone-name, .block-bottom .zone-name, .block-top .eyebrow, .block-bottom .eyebrow { order: 2; }
+.block-top .eyebrow { text-align: right; }
+.block-bottom { margin-top: 40px; }
 /* Tabs and the floating scan button */
 .tabs button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .fab { background: var(--brand-red); border-color: var(--brand-red); color: #fff; font-weight: 700; }
@@ -684,6 +689,18 @@ const GROUP_COLS = [
   ["T", "U", "V", "W", "X"], ["Z", "AA", "AB", "AC", "AD"],
 ];
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXY";
+// Zones 6–10 (top section) are numbered across the rows, snaking: row 1 A–E left to right, row 2 F–J right to
+// left, row 3 K–O left to right, row 4 P–T right to left, row 5 U–Y left to right.
+// Zones 1–5 (middle section) are the upside-down mirror: the bottom row is A–E left to right, the row above F–J
+// right to left, then K–O, P–T, and the top row (next to the zone name) U–Y left to right.
+// Zones 11–15 (bottom section, 3 rows) snake like zones 6–10: A–E left to right, J–F, then K–O.
+// Until layout 2 (Nov 2026) every zone ran down the columns: OLD_CODES maps those old codes to the new ones,
+// and renumberSlots() converts saved records once.
+const LAYOUT_V = 2;
+const snakeIdx = (c, r, cols) => r * cols + (r % 2 ? cols - 1 - c : c);
+const SNAKE = { Top: (c, r, n) => snakeIdx(c, r, n), Middle: (c, r, n, rows) => snakeIdx(c, rows - 1 - r, n),
+  Bottom: (c, r, n) => snakeIdx(c, r, n) };
+const OLD_CODES = {};
 const SLOTS = {}, ZONES = {}, SLOT_ORDER = [];
 BLOCKS.forEach(b => b.zones.forEach((z, gi) => {
   const cols = GROUP_COLS[gi];
@@ -691,7 +708,9 @@ BLOCKS.forEach(b => b.zones.forEach((z, gi) => {
   ZONES[z] = zone;
   cols.forEach((col, c) => {
     for (let r = 0; r < b.rows; r++) {
-      const idx = c * b.rows + r;
+      const snake = SNAKE[b.section];
+      const idx = snake ? snake(c, r, cols.length, b.rows) : c * b.rows + r;
+      if (snake) OLD_CODES[LETTERS[c * b.rows + r] + z] = LETTERS[idx] + z;
       const s = { code: LETTERS[idx] + z, zone: z, section: b.section, col: c + 1, row: r + 1, cols: cols.length, rows: b.rows, slot: idx + 1, total: cols.length * b.rows, cell: col + (b.firstRow + r) };
       SLOTS[s.code] = s;
       zone.slots.push(s);
@@ -707,7 +726,9 @@ const at = (z, col, row) => {
 };
 const STATUS = { loaded: "Loaded", empty_clean: "Empty clean", empty_dirty: "Empty dirty", gas_laden: "Gas tank laden", gas_empty: "Gas tank empty" };
 const CAPACITY = 5; // tanks per slot, except the smaller slots below
-const SMALL_SLOTS = { A11: 4, B11: 4, C11: 4, M15: 4, N15: 4, O15: 4 };
+// The smaller slots: the left column of zone 11 and the right column of zone 15 (before layout 2 these were
+// A11, B11, C11 and M15, N15, O15).
+const SMALL_SLOTS = { A11: 4, J11: 4, K11: 4, E15: 4, F15: 4, O15: 4 };
 // Open and closed spaces: every slot has room for MAX_SPACES tanks, but only its OPEN spaces can be used.
 // By default all spaces are open (the small slots above have 4 open and 1 closed). Admins open or close spaces
 // per slot (collection "slots", id = slot code, field open = number of open spaces). Staff only ever see the
@@ -791,7 +812,8 @@ const tanksAt = code => inYard().filter(t => t.location === code).sort((a, b) =>
 // Firestore applies writes locally at once and syncs them when the phone is online.
 function writeTank(id, body, okText) {
   if (!fdb || !me) return false;
-  fdb.collection("tanks").doc(id).set(body).catch(err => {
+  // layout: records written with the new slot numbering, so renumberSlots() never converts them again.
+  fdb.collection("tanks").doc(id).set(Object.assign({}, body, { layout: LAYOUT_V })).catch(err => {
     setMsg(msgEl, err.code === "permission-denied"
       ? "Your account isn't allowed to change tank records. Ask your admin."
       : "That change didn't save. Check your connection and try again.", "bad");
@@ -893,7 +915,7 @@ function deleteRecord(id) {
 // ---------- Yard map ----------
 const yardEl = $("yard");
 yardEl.innerHTML = BLOCKS.map(b => `
-  <div class="block">
+  <div class="block block-${b.section.toLowerCase()}">
     <div class="eyebrow">${b.section} section · Zones ${Math.min(...b.zones)}–${Math.max(...b.zones)}</div>
     <div class="zones">${b.zones.map(z => {
       const zn = ZONES[z];
@@ -2024,7 +2046,8 @@ function stopApp() {
 function watchSlots() {
   slotsUnsub = fdb.collection("slots").onSnapshot(snap => {
     slotCfg = new Map(snap.docs.map(d => [d.id, d.data()]));
-    renderData();
+    slotsLoaded = !snap.metadata.fromCache;
+    renderData(); renumberSlots();
   }, () => { slotCfg = new Map(); renderData(); });
   reqsUnsub = fdb.collection("slotRequests").onSnapshot(snap => {
     slotReqs = new Map(snap.docs.map(d => [d.id, d.data()]));
@@ -2039,7 +2062,7 @@ function startApp(u) {
   unsub = fdb.collection("tanks").onSnapshot({ includeMetadataChanges: true }, snap => {
     tanks = new Map(snap.docs.map(d => [d.id, d.data()]));
     dataState = snap.metadata.hasPendingWrites ? "pending" : snap.metadata.fromCache ? "cached" : "synced";
-    setSync(); renderData();
+    setSync(); renderData(); renumberSlots();
   }, err => {
     dataState = "error";
     setMsg($("banner"), err.code === "permission-denied"
@@ -2093,6 +2116,62 @@ async function onProfile(u, snap) {
   if (!unsub) startApp(u);
   else $("me-name").textContent = p.name || person(u.email);
   setAdmin(p.role === "admin");
+  renumberSlots();
+}
+
+// ---------- One-time switch of all zones to the new slot numbering ----------
+// The first admin to open the new version converts what's saved: tank slots (and the slots in their history),
+// open/closed spaces, and space requests. A marker record "slots/_layout" (open = 2) says it's done, so it runs
+// once and needs no new database rules. It also sets the oldest phone app allowed to this version, because older
+// apps still use the old numbering. Tanks already written by the new version (layout 2) are left alone.
+let slotsLoaded = false, renumbering = false;
+function renumberSlots() {
+  if (renumbering || !fdb || !me || !profile || profile.role !== "admin" || profile.status !== "active") return;
+  if (dataState !== "synced" || !slotsLoaded) return;
+  const mark = slotCfg.get("_layout");
+  if (mark && mark.open >= LAYOUT_V) return;
+  renumbering = true;
+  const now = new Date().toISOString(), by = emailKey(me.email);
+  const nu = code => OLD_CODES[code] || code;
+  const ops = [];
+  tanks.forEach((t, id) => {
+    if (t.layout >= LAYOUT_V) return;
+    const upd = {};
+    if (t.location && OLD_CODES[t.location]) upd.location = nu(t.location);
+    if (t.lastLocation && OLD_CODES[t.lastLocation]) upd.lastLocation = nu(t.lastLocation);
+    if (Array.isArray(t.history) && t.history.some(h => h && OLD_CODES[h.location]))
+      upd.history = t.history.map(h => h && OLD_CODES[h.location] ? Object.assign({}, h, { location: nu(h.location) }) : h);
+    const from = t.location || t.lastLocation;
+    if (upd.location && upd.location !== t.location || upd.lastLocation && upd.lastLocation !== t.lastLocation) {
+      upd.history = [{ at: now, by, action: `Slot renumbered: ${from} is now ${nu(from)}`, location: nu(from), status: t.status, customer: t.customer || "" },
+        ...(upd.history || t.history || [])].slice(0, 50);
+    }
+    if (!Object.keys(upd).length) return;
+    upd.layout = LAYOUT_V;
+    ops.push(b => b.update(fdb.collection("tanks").doc(id), upd));
+  });
+  // Open spaces: move each renamed slot's setting to its new code (deleting old records nothing replaces).
+  const moved = new Map();
+  slotCfg.forEach((c, code) => { if (OLD_CODES[code]) moved.set(nu(code), c.open); });
+  slotCfg.forEach((c, code) => { if (OLD_CODES[code] && !moved.has(code)) ops.push(b => b.delete(fdb.collection("slots").doc(code))); });
+  moved.forEach((open, code) => ops.push(b => b.set(fdb.collection("slots").doc(code), { code, open, updatedAt: now, updatedBy: by })));
+  // Space requests can't be re-filed for someone else, so requests for renamed slots are cleared.
+  slotReqs.forEach((r, code) => { if (OLD_CODES[code] && nu(code) !== code) ops.push(b => b.delete(fdb.collection("slotRequests").doc(code))); });
+  ops.push(b => b.set(fdb.collection("slots").doc("_layout"), { code: "_layout", open: LAYOUT_V, updatedAt: now, updatedBy: by }));
+  {
+    const n = Number(window.APP_BUILD) || 0;
+    if (n > (minBuild || 0)) ops.push(b => b.set(fdb.collection("config").doc("app"), { minBuild: n, updatedAt: now, updatedBy: by }));
+  }
+  // Firestore takes at most 500 writes per batch; the marker goes in the last one.
+  const chunks = [];
+  for (let i = 0; i < ops.length; i += 400) chunks.push(ops.slice(i, i + 400));
+  (async () => {
+    for (const part of chunks) { const b = fdb.batch(); part.forEach(op => op(b)); await b.commit(); }
+    setMsg($("banner"), "All zones now use the new slot numbers. Saved tanks and spaces were moved to the new numbers.", "info");
+  })().catch(() => {
+    renumbering = false;
+    setMsg($("banner"), "Couldn't switch the zones to the new slot numbers yet. It will try again; keep the app open.", "bad");
+  });
 }
 
 // ---------- Oldest app version allowed ----------
