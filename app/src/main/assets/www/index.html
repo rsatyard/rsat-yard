@@ -135,9 +135,10 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .update-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
 /* Totals */
-.stats { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 1100px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } .stats .stat.all { grid-column: span 2; } }
-@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stats .stat.all { grid-column: 1 / -1; } }
+.stats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+/* 8 tiles: 2 rows of 4 on medium screens, 4 rows of 2 on phones. */
+@media (max-width: 1100px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .stat {
   text-align: left; display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit;
@@ -148,9 +149,9 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .stat .k { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
 .stat.loaded { --sc: var(--loaded); } .stat.empty_clean { --sc: var(--clean); } .stat.empty_dirty { --sc: var(--dirty); }
 .stat.gas_laden { --sc: var(--gas-laden); } .stat.gas_empty { --sc: var(--gas-empty); }
-.stat.all { --sc: var(--ink); } .stat.free { --sc: var(--slot-hover); }
+.stat.all { --sc: var(--ink); } .stat.free { --sc: var(--slot-hover); } .stat.outside { --sc: var(--brand-red); }
 /* Totals per yard: Yard 1 = zones 1-10, Yard 2 = zones 11-15 */
-.yards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.yards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 @media (max-width: 760px) { .yards { grid-template-columns: 1fr; } }
 .yard-card { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); border-left: 6px solid var(--accent); }
 .yard-card .yc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -164,7 +165,25 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .yard-card .yc-status span { display: inline-flex; align-items: center; gap: 6px; }
 .yard-card .yc-status b { font-variant-numeric: tabular-nums; }
 
-.main { display: grid; grid-template-columns: minmax(300px, 410px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+/* Slot / tank pop-up over the map: two columns on wide screens, one on phones. */
+.sheet { position: fixed; inset: 0; z-index: 45; background: rgba(5, 10, 30, 0.6); overflow-y: auto; display: flex; justify-content: center; align-items: flex-start;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 12px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.sheet-panel { width: min(980px, 100%); box-shadow: 0 24px 60px rgba(0,0,0,0.45); border-top: 4px solid var(--brand-red); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-close { padding: 6px 12px; font-size: 0.85rem; }
+.sheet-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sheet-left, .sheet-right { display: grid; gap: 12px; min-width: 0; }
+.sheet-right .scan-tools { border-top: 0; padding-top: 0; }
+@media (max-width: 760px) { .sheet-cols { grid-template-columns: minmax(0, 1fr); } .sheet { padding-left: 8px; padding-right: 8px; } }
+body.sheet-open { overflow: hidden; }
+/* Pick on map: a bar under the top bar; full slots fade so free ones stand out. */
+.pick-bar { position: fixed; left: 50%; transform: translateX(-50%); top: calc(70px + env(safe-area-inset-top, 0px)); z-index: 35; width: min(620px, calc(100% - 24px));
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px;
+  background: var(--brand-red); color: #fff; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.pick-bar button { background: #fff; color: var(--brand-red); border: 0; padding: 6px 12px; }
+body.picking .slot.full, body.picking .slot.closed { opacity: 0.3; }
+body.picking .slot:not(.full):not(.closed) { box-shadow: inset 0 0 0 2px var(--brand-red); }
 @media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
 
 .scan { display: grid; gap: 12px; }
@@ -173,6 +192,9 @@ form.lookup input { flex: 1; font: 600 1.1rem var(--font-mono); text-transform: 
 .big-scan { width: 100%; padding: 14px; font-size: 1.05rem; }
 
 .result { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 12px; }
+.result-body:empty, #space-box:empty { display: none; }
+.scan .result { border-top: 0; padding-top: 0; }
+.scan-tools { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
 .result-head { display: flex; align-items: center; gap: 14px; }
 .code-big { font: 700 3.2rem/0.9 var(--font-display); background: var(--ink); color: var(--surface); padding: 8px 14px 6px; border-radius: 8px; min-width: 92px; text-align: center; }
 .code-big.tank { font-size: 1.8rem; padding: 10px 12px 8px; }
@@ -293,7 +315,7 @@ form.details { display: grid; gap: 8px; }
   position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 30; border-radius: 999px; padding: 16px 22px; font-size: 1.05rem; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
 }
-@media (min-width: 901px) { .fab { display: none; } }
+/* The round Scan button shows on every screen size (the scan box is inside the slot pop-up). */
 .camera { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; display: grid; grid-template-rows: auto 1fr auto; }
 .camera header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; }
 .camera header b { font: 700 1.2rem var(--font-display); text-transform: uppercase; }
@@ -368,6 +390,18 @@ form.details { display: grid; gap: 8px; }
 .req-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 .req-list li .actions { margin-left: auto; }
 #req-panel { border-top: 4px solid var(--brand-red); }
+/* Outside the yard */
+.outside-btn { background: var(--brand-red); border-color: var(--brand-red); color: #fff; padding: 6px 12px; font-size: 0.85rem; border-radius: 999px; }
+.outside-btn:hover { background: var(--brand-red); filter: brightness(1.08); }
+.outside-btn b { background: #fff; color: var(--brand-red); border-radius: 999px; padding: 0 7px; margin-left: 2px; }
+.outside-btn[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
+.code-big.out { background: var(--brand-red); border-bottom-color: var(--brand-navy); }
+.pill.activity { --ps: var(--bad-soft); --pc: var(--brand-red); }
+.outside-box { display: grid; gap: 8px; padding: 10px 12px; border: 1px dashed var(--brand-red); border-radius: 8px; }
+.outside-box .actions input, .remark-edit input { flex: 1; min-width: 12rem; }
+.move-row input { width: 11rem; flex: 0 1 11rem; font: 600 0.9rem var(--font-mono); text-transform: uppercase; padding: 7px 10px; }
+input.need, select.need:invalid, select.need:has(option[value=""]:checked) { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
+input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none; }
 /* Footer */
 .site-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; padding: 10px 0 4px; color: var(--muted); font-size: 0.8rem; text-align: center; }
 .site-foot img { height: 26px; background: #fff; padding: 3px 6px; border-radius: 5px; }
@@ -443,7 +477,6 @@ form.details { display: grid; gap: 8px; }
     <div id="update-bar" class="msg info update-bar" hidden><span id="update-text"></span><a class="primary small" id="update-link" href="#" style="text-decoration:none;padding:6px 12px;border-radius:8px">Download update</a></div>
     <p id="banner" class="msg info" hidden></p>
     <div class="stats" id="stats" role="group" aria-label="Yard totals"></div>
-    <div class="yards" id="yards" aria-label="Totals per yard"></div>
 
     <section class="panel" id="req-panel" aria-labelledby="req-title" hidden>
       <h2 id="req-title">Requests for more space</h2>
@@ -451,19 +484,16 @@ form.details { display: grid; gap: 8px; }
       <ul class="req-list" id="req-list"></ul>
     </section>
 
-    <div class="main">
-      <section class="panel scan" aria-labelledby="scan-title">
-        <h2 id="scan-title">Scan</h2>
-        <button class="primary big-scan" type="button" id="cam-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
-          Scan tank number
-        </button>
-        <form class="lookup" id="scan-form" autocomplete="off">
-          <input id="scan-input" type="text" placeholder="Slot (A1) or tank no." aria-label="Slot code or tank number">
-          <button type="submit">Look up</button>
-        </form>
-        <p class="hint">Point the camera at the number painted on the tank (4 letters + 7 digits), then tap OK or Edit to correct it. Or type a slot (A1) or tank number in the box.</p>
+    <!-- Slot / tank pop-up: opens over the map when a slot, a tank or Outside yard is tapped.
+         Left: the slot or tank card and Park a tank (tanks in the slot below). Right: spaces box, scan and look-up. -->
+    <!-- Shown while choosing a slot on the map (Pick on map). -->
+    <div class="pick-bar" id="pick-bar" hidden role="status"><span id="pick-text"></span><button type="button" id="pick-cancel">Cancel</button></div>
+    <div class="sheet" id="sheet" hidden>
+      <section class="panel scan sheet-panel" aria-labelledby="scan-title" role="dialog" aria-modal="true">
+        <div class="sheet-head"><h2 id="scan-title">Scan</h2><button type="button" class="sheet-close" id="sheet-close">✕ Close</button></div>
         <p id="scan-msg" class="msg" hidden></p>
+        <div class="sheet-cols">
+        <div class="sheet-left">
         <div class="result" id="result" aria-live="polite"></div>
 
         <form class="add" id="add-form" autocomplete="off" hidden>
@@ -481,17 +511,37 @@ form.details { display: grid; gap: 8px; }
             <label><input type="radio" name="add-status" value="gas_laden"><span class="dot gas_laden"></span>Gas tank laden</label>
             <label><input type="radio" name="add-status" value="gas_empty"><span class="dot gas_empty"></span>Gas tank empty</label>
           </fieldset>
-          <input id="customer-input" class="caps" type="text" list="customer-list" placeholder="Customer" aria-label="Customer" autocapitalize="characters">
-          <datalist id="customer-list"></datalist>
-          <input id="note-input" class="caps" type="text" placeholder="Note (optional): product, seal no." aria-label="Note" autocapitalize="characters">
+          <input id="customer-input" class="caps" type="text" list="customer-list" placeholder="Customer (optional)" aria-label="Customer (optional)" autocapitalize="characters">
+          <datalist id="customer-list"></datalist>          <input id="note-input" class="caps" type="text" placeholder="Note (optional): product, seal no." aria-label="Note (optional)" autocapitalize="characters">
           <p id="add-warn" class="hint" hidden></p>
           <button class="primary" type="submit" id="add-btn">Save tank</button>
         </form>
-      </section>
+        <div class="result-body" id="result-body"></div>
+        </div>
+        <div class="sheet-right">
+        <div id="space-box"></div>
 
+        <div class="scan-tools">
+          <button class="primary big-scan" type="button" id="cam-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
+            Scan tank number
+          </button>
+          <form class="lookup" id="scan-form" autocomplete="off">
+            <input id="scan-input" type="text" placeholder="Slot (A1) or tank no." aria-label="Slot code or tank number">
+            <button type="submit">Look up</button>
+          </form>
+          <p class="hint">Point the camera at the number painted on the tank (4 letters + 7 digits), then tap OK or Edit to correct it. Or type a slot (A1) or tank number in the box.</p>
+        </div>
+        </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="main">
       <section class="panel" aria-labelledby="map-title">
         <div class="map-head">
           <h2 id="map-title">Yard map</h2>
+          <button type="button" class="outside-btn" data-act="outside" id="outside-btn">Outside yard <b id="outside-count">0</b></button>
           <div class="legend">
             <span><i style="--lc: var(--loaded)"></i>Loaded</span>
             <span><i style="--lc: var(--clean)"></i>Empty clean</span>
@@ -503,6 +553,8 @@ form.details { display: grid; gap: 8px; }
         </div>
         <div class="map-scroll"><div class="yard" id="yard"></div></div>
         <p class="hint">Each dot is one space you can use, colored by the tank in it; a dark border means full and a striped slot is closed. Tap a slot to see or update its tanks. Swipe sideways to see the whole yard.</p>
+        <!-- Totals per yard, under the map -->
+        <div class="yards" id="yards" aria-label="Totals per yard"></div>
       </section>
     </div>
 
@@ -545,34 +597,6 @@ form.details { display: grid; gap: 8px; }
         <button type="button" data-ex="csv">Export CSV</button>
       </div>
       <p id="export-msg" class="msg" hidden style="margin-top:10px"></p>
-    </section>
-
-    <section class="panel" aria-labelledby="labels-title">
-      <h2 id="labels-title">Print slot labels</h2>
-      <p class="hint">A PDF with 10 labels per A4 page. Cut along the dashed lines and stick each label on its slot.</p>
-      <div class="labels-bar">
-        <div class="field">
-          <span class="eyebrow">Zones</span>
-          <div class="chips" id="zone-chips"></div>
-        </div>
-        <div class="field">
-          <label class="eyebrow" for="label-kind">On each label</label>
-          <select id="label-kind">
-            <option value="both">QR code and barcode</option>
-            <option value="qr">QR code only</option>
-            <option value="bar">Barcode only</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="eyebrow" for="qr-content">QR code holds</label>
-          <select id="qr-content">
-            <option value="details">Location details</option>
-            <option value="code">Location code only (for WMS)</option>
-          </select>
-        </div>
-        <button class="primary" id="download-btn" type="button">Make labels PDF</button>
-      </div>
-      <p id="dl-msg" class="msg" hidden style="margin-top:10px"></p>
     </section>
 
     <section class="panel" aria-labelledby="acc-title" id="acc-panel" hidden>
@@ -643,9 +667,6 @@ form.details { display: grid; gap: 8px; }
 <script src="lib/firebase-app-compat.js"></script>
 <script src="lib/firebase-auth-compat.js"></script>
 <script src="lib/firebase-firestore-compat.js"></script>
-<script src="lib/qrcode.min.js"></script>
-<script src="lib/JsBarcode.all.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/tesseract/tesseract.min.js"></script>
 <script>
@@ -730,8 +751,6 @@ const person = email => email ? String(email).split("@")[0] : "Someone";
 const who = email => esc(person(email));
 const pill = st => `<span class="pill ${esc(st)}">${esc(STATUS[st] || st)}</span>`;
 function setMsg(el, text, kind) { el.hidden = !text; el.textContent = text || ""; el.className = "msg " + (kind || "info"); }
-const qrText = (s, mode) => mode === "code" ? s.code :
-  `RSAT YARD | Location: ${s.code} | Zone ${s.zone} | ${s.section} section | Column ${s.col} of ${s.cols}, Row ${s.row} of ${s.rows} | Slot ${s.slot} of ${s.total}`;
 // Accepts a bare code ("a1", "A-1") or the text inside one of our QR codes.
 function parseScan(raw) {
   const text = String(raw || "").trim();
@@ -761,6 +780,13 @@ let dataState = "connecting"; // connecting | synced | pending | cached | error
 let unsub = null;
 
 const inYard = () => [...tanks.values()].filter(t => t.inYard && t.location);
+// Outside the yard: still checked in (inYard), but taken out of its slot for an activity (cleaning, repair...).
+// Fields: outside = true, activity, place, outsideSince; lastLocation keeps the slot it came from.
+const ACTIVITY = { cleaning: "Cleaning / washing", repair: "Repair / maintenance", inspection: "Inspection / survey",
+  loading: "Loading / discharging", heating: "Heating", waiting: "Waiting for truck", other: "Other" };
+const PLACES = ["WORKSHOP", "WASH BAY", "HEATING BAY"]; // plus "Other", typed by hand
+const outsideTanks = () => [...tanks.values()].filter(t => t.inYard && t.outside && !t.location);
+const activityText = t => ACTIVITY[t.activity] || t.activity || "Outside";
 const tanksAt = code => inYard().filter(t => t.location === code).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
 
 // Firestore applies writes locally at once and syncs them when the phone is online.
@@ -786,7 +812,8 @@ function parkTank(id, code, status, note, customer) {
   const prev = tanks.get(id);
   const now = new Date().toISOString();
   let action = "Gated in";
-  if (prev && prev.inYard && prev.location && prev.location !== code) action = `Moved from ${prev.location}`;
+  if (prev && prev.inYard && prev.outside && !prev.location) action = `Back from outside (${activityText(prev)})`;
+  else if (prev && prev.inYard && prev.location && prev.location !== code) action = `Moved from ${prev.location}`;
   else if (prev && prev.inYard && prev.location === code) action = "Updated";
   const keepSince = prev && prev.inYard && prev.status === status;
   return writeTank(id, {
@@ -810,10 +837,38 @@ function gateOut(id) {
   const prev = tanks.get(id);
   if (!prev) return;
   const now = new Date().toISOString();
+  const from = prev.location ? `of ${prev.location}` : prev.outside ? "from outside the yard" : `of ${prev.lastLocation || "the yard"}`;
   writeTank(id, Object.assign({}, prev, {
-    inYard: false, lastLocation: prev.location, location: null, gatedOutAt: now, updatedAt: now, updatedBy: me.email,
-    history: withHistory(prev, { action: "Gated out", location: prev.location, status: prev.status, customer: prev.customer || "" }),
-  }), `${fmtTank(id)} gated out of ${prev.location}.`);
+    inYard: false, lastLocation: prev.location || prev.lastLocation, location: null, outside: false, gatedOutAt: now, updatedAt: now, updatedBy: me.email,
+    history: withHistory(prev, { action: prev.outside ? "Gated out (from outside)" : "Gated out", location: prev.location || prev.lastLocation, status: prev.status, customer: prev.customer || "" }),
+  }), `${fmtTank(id)} gated out ${from}.`);
+}
+// Remarks (what is being done to the tank) are typed by staff and required.
+function moveOutside(id, activity, place) {
+  const prev = tanks.get(id);
+  if (!prev || !prev.inYard) return false;
+  activity = String(activity || "").trim().toUpperCase();
+  if (!activity) { setMsg(msgEl, "Type the remarks first: what is being done to the tank outside the yard. Remarks are required.", "bad"); return false; }
+  const now = new Date().toISOString();
+  const what = activity + (place ? ` · ${place}` : "");
+  writeTank(id, Object.assign({}, prev, {
+    location: null, outside: true, activity, place: place || "", outsideSince: now,
+    lastLocation: prev.location || prev.lastLocation, updatedAt: now, updatedBy: me.email,
+    history: withHistory(prev, { action: `Moved outside: ${what}`, location: prev.location || "", status: prev.status, customer: prev.customer || "" }),
+  }), `${fmtTank(id)} is outside the yard: ${what}. Its space at ${prev.location || "its slot"} is free.`);
+}
+function changeActivity(id, activity) {
+  const prev = tanks.get(id);
+  if (!prev || !prev.outside) return false;
+  activity = String(activity || "").trim().toUpperCase();
+  if (!activity) { setMsg(msgEl, "Type the new remarks first. Remarks are required.", "bad"); return false; }
+  if (activity === prev.activity) { setMsg(msgEl, "The remarks are the same as before.", "info"); return false; }
+  const now = new Date().toISOString();
+  writeTank(id, Object.assign({}, prev, {
+    activity, outsideSince: now, updatedAt: now, updatedBy: me.email,
+    history: withHistory(prev, { action: `Outside: ${activity}`, location: "", status: prev.status, customer: prev.customer || "" }),
+  }), `${fmtTank(id)}: remarks updated to ${activity}.`);
+  return true;
 }
 function saveDetails(id, customer, note) {
   const prev = tanks.get(id);
@@ -857,13 +912,39 @@ yardEl.innerHTML = BLOCKS.map(b => `
   </div>`).join("");
 const slotEls = {};
 yardEl.querySelectorAll(".slot").forEach(el => { slotEls[el.dataset.code] = el; });
+// "Pick on map": the pop-up closes, a bar asks to tap a slot, and the tank is placed (or returned) there.
+let pickFor = null;
+function startPick(id) {
+  const t = tanks.get(id);
+  if (!t) return;
+  pickFor = id;
+  closeSheet();
+  $("pick-text").textContent = `Tap a slot on the map to ${t.outside && !t.location ? "return" : "move"} ${fmtTank(id)}${t.location ? ` (now at ${t.location})` : ""}.`;
+  $("pick-bar").hidden = false;
+  document.body.classList.add("picking");
+  $("map-title").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function stopPick() { pickFor = null; $("pick-bar").hidden = true; document.body.classList.remove("picking"); }
+function pickSlot(code) {
+  const t = tanks.get(pickFor);
+  if (!t) { stopPick(); return; }
+  if (code === t.location) { $("pick-text").textContent = `${fmtTank(t.tank)} is already at ${code}. Tap another slot, or Cancel.`; return; }
+  const free = capOf(code) - tanksAt(code).length;
+  if (free <= 0) { $("pick-text").textContent = `${code} has no free space. Tap another slot, or Cancel.`; return; }
+  const id = pickFor;
+  stopPick();
+  if (parkTank(id, code, t.status, t.note || "", t.customer || "")) {
+    view = { type: "slot", code }; renderView(); openSheet();
+  }
+}
 yardEl.addEventListener("click", e => {
   const b = e.target.closest(".slot");
   if (!b) return;
+  if (pickFor) { pickSlot(b.dataset.code); return; }
   view = { type: "slot", code: b.dataset.code };
   setMsg(msgEl, "");
   renderView();
-  if (window.innerWidth <= 900) $("scan-title").scrollIntoView({ behavior: "smooth" });
+  openSheet();
 });
 
 // Each slot shows its code and one dot per tank space, colored by that tank's status.
@@ -873,6 +954,8 @@ const slotInner = (code, list) => `<span>${code}</span><span class="dots" aria-h
     `<i class="${list[i] ? list[i].status : i < capOf(code) ? "e" : "x"}"></i>`).join("")}</span>`;
 
 function renderMap() {
+  $("outside-count").textContent = outsideTanks().length;
+  $("outside-btn").setAttribute("aria-pressed", view.type === "outside");
   const byCode = {};
   inYard().forEach(t => { (byCode[t.location] = byCode[t.location] || []).push(t); });
   yardEl.classList.toggle("filtering", !!filter);
@@ -908,6 +991,7 @@ function renderStats() {
     ["gas_laden", list.filter(t => t.status === "gas_laden").length, "Gas tank laden"],
     ["gas_empty", list.filter(t => t.status === "gas_empty").length, "Gas tank empty"],
     ["free", free, `Free spaces of ${openSpaces(SLOT_ORDER).toLocaleString()}`],
+    ["outside", outsideTanks().length, "Outside yard"],
   ];
   statsEl.innerHTML = items.map(([k, n, label]) =>
     `<button type="button" class="stat ${k}" data-filter="${k}" aria-pressed="${filter === k}"><span class="n">${dataState === "connecting" ? "–" : n}</span><span class="k">${label}</span></button>`).join("");
@@ -939,6 +1023,7 @@ function renderYards(list, perSlot) {
 statsEl.addEventListener("click", e => {
   const b = e.target.closest(".stat");
   if (!b) return;
+  if (b.dataset.filter === "outside") { showOutside(); return; }
   filter = filter === b.dataset.filter ? null : b.dataset.filter;
   if (filter) regTab = "in";
   renderData();
@@ -976,7 +1061,7 @@ function lookup(raw, source) {
   renderView();
   const hit = yardEl.querySelector(".slot.hit");
   if (hit) hit.scrollIntoView({ block: "nearest", inline: "center" });
-  $("scan-title").scrollIntoView({ behavior: "smooth" });
+  openSheet();
 }
 
 function statusButtons(t) {
@@ -992,6 +1077,7 @@ function gateButton(t) {
 // Staff never see closed spaces or how many a slot can hold; they can only ask an admin for more space.
 const reqSpaces = r => Math.max(1, Math.min(MAX_SPACES, Number.isInteger(r && r.spaces) ? r.spaces : 1));
 const spacesText = n => `${n} space${n === 1 ? "" : "s"}`;
+const moreText = n => `${n} more space${n === 1 ? "" : "s"}`;
 const reqPick = new Map(); // how many spaces staff picked, kept while the card redraws
 document.addEventListener("change", e => { if (e.target.classList.contains("req-n")) reqPick.set(e.target.dataset.code, +e.target.value); });
 function spaceControls(code, used) {
@@ -1033,8 +1119,9 @@ function renderSlotView(s) {
         <div class="hint">${s.section} section · column ${s.col} of ${s.cols}, row ${s.row} of ${s.rows}</div>
         ${view.example ? `<div class="hint">Showing A1. Tap the map or type a slot to pick another one.</div>` : ""}
       </div>
-    </div>
-    ${spaceControls(s.code, here.length)}
+    </div>`;
+  $("space-box").innerHTML = spaceControls(s.code, here.length);
+  $("result-body").innerHTML = `
     <div style="display:grid;gap:8px">
       <span class="eyebrow">${cap === 0 && !here.length ? "This slot is closed" : `${here.length} of ${cap} tanks in this slot${here.length >= cap ? " · full" : ""}`}</span>
       ${here.length ? here.map(t => `
@@ -1044,11 +1131,16 @@ function renderSlotView(s) {
             ${pill(t.status)}
           </div>
           <div class="meta">${t.customer ? esc(t.customer) + " · " : ""}${esc(STATUS[t.status])} since ${when(t.statusSince)} · by ${who(t.updatedBy)}${t.note ? " · " + esc(t.note) : ""}</div>
-          <div class="actions">${statusButtons(t)}${gateButton(t)}</div>
+          <div class="actions">${statusButtons(t)}</div>
+          <div class="actions move-row">
+            <input class="keep caps" data-key="mv-${esc(t.tank)}" id="mv-${esc(t.tank)}" type="text" placeholder="Move to slot, e.g. B3" aria-label="Move ${esc(fmtTank(t.tank))} to slot" autocapitalize="characters">
+            <button type="button" class="small" data-act="mv" data-id="${esc(t.tank)}">Move</button>
+            <button type="button" class="small" data-act="pick" data-id="${esc(t.tank)}">Pick on map</button>${gateButton(t)}
+          </div>
         </div>`).join("") : `<p class="empty-note">${dataState === "connecting" ? "Loading tank records…" : "No tank is recorded at " + s.code + "."}</p>`}
       ${here.length >= cap ? `<p class="empty-note">${cap === 0
-        ? (amAdmin() ? "All spaces in this slot are closed. Open spaces above to let staff park here." : "This slot is closed. Ask an admin if you need space here.")
-        : "This slot is full. Move or gate out a tank to make space" + (cap < MAX_SPACES ? (amAdmin() ? ", or open a closed space above." : ", or ask an admin for more space.") : ".")}</p>` : ""}
+        ? (amAdmin() ? "All spaces in this slot are closed. Open spaces below to let staff park here." : "This slot is closed. Ask an admin if you need space here.")
+        : "This slot is full. Move or gate out a tank to make space" + (cap < MAX_SPACES ? (amAdmin() ? ", or open a closed space below." : ", or ask an admin for more space below.") : ".")}</p>` : ""}
     </div>`;
   addForm.hidden = here.length >= cap;
   $("add-title").textContent = `Park a tank at ${s.code} · ${cap - here.length} of ${cap} spaces free`;
@@ -1058,12 +1150,16 @@ function renderSlotView(s) {
 
 function renderTankView(t) {
   const hist = Array.isArray(t.history) ? t.history.slice(0, 12) : [];
+  const out = t.inYard && t.outside && !t.location;
   resultEl.innerHTML = `
     <div class="result-head"><div class="code-big tank">${esc(fmtTank(t.tank))}</div></div>
-    <div class="actions">${t.inYard ? pill(t.status) : `<span class="pill out">Gated out</span>`}</div>
+    <div class="actions">${t.inYard ? (out ? `<span class="pill activity">Outside yard · ${esc(activityText(t))}</span>` : "") + pill(t.status) : `<span class="pill out">Gated out</span>`}</div>
     <dl class="facts">
+      ${out ? `<dt>Where</dt><dd><button type="button" class="linkish" data-act="outside">Outside yard</button>${t.place ? " · " + esc(t.place) : ""}</dd>
+      <dt>Remarks</dt><dd>${esc(activityText(t))} since ${when(t.outsideSince)}</dd>
+      <dt>Came from</dt><dd>${esc(t.lastLocation || "Unknown")}</dd>` : `
       <dt>${t.inYard ? "Slot" : "Last slot"}</dt>
-      <dd>${t.inYard ? `<button type="button" class="linkish" data-act="slot" data-code="${esc(t.location)}">${esc(t.location)}</button> · Zone ${SLOTS[t.location] ? SLOTS[t.location].zone : "?"}` : esc(t.lastLocation || "Unknown")}</dd>
+      <dd>${t.inYard ? `<button type="button" class="linkish" data-act="slot" data-code="${esc(t.location)}">${esc(t.location)}</button> · Zone ${SLOTS[t.location] ? SLOTS[t.location].zone : "?"}` : esc(t.lastLocation || "Unknown")}</dd>`}
       ${t.inYard ? `<dt>Status</dt><dd>${esc(STATUS[t.status])} since ${when(t.statusSince)}</dd>` : `<dt>Gated out</dt><dd>${when(t.gatedOutAt)} as ${esc(STATUS[t.status] || "")}</dd>`}
       <dt>Customer</dt><dd>${t.customer ? esc(t.customer) : "Not set"}</dd>
       <dt>Date in</dt><dd>${esc(fullDate(currentDateIn(t)) || "Unknown")}</dd>
@@ -1073,24 +1169,101 @@ function renderTankView(t) {
     </dl>
     <form class="details" id="details-form" autocomplete="off">
       <span class="eyebrow">Edit details</span>
-      <input id="det-customer" class="caps" type="text" list="customer-list" placeholder="Customer" aria-label="Customer" autocapitalize="characters" value="${esc(t.customer || "")}">
-      <input id="det-note" class="caps" type="text" placeholder="Note: product, seal no." aria-label="Note" autocapitalize="characters" value="${esc(t.note || "")}">
+      <input id="det-customer" class="caps" type="text" list="customer-list" placeholder="Customer (optional)" aria-label="Customer (optional)" autocapitalize="characters" value="${esc(t.customer || "")}">
+      <input id="det-note" class="caps" type="text" placeholder="Note (optional): product, seal no." aria-label="Note (optional)" autocapitalize="characters" value="${esc(t.note || "")}">
       <button type="submit">Save details</button>
     </form>
     ${t.inYard ? `
       <div style="display:grid;gap:8px"><span class="eyebrow">Change status</span>${statusButtons(t)}</div>
+      ${out ? `<div class="outside-box"><span class="eyebrow">Outside yard: update remarks</span>${remarkEditor(t)}</div>` : ""}
       <form class="actions" id="move-form" autocomplete="off">
-        <input id="move-input" type="text" placeholder="New slot, e.g. B3" aria-label="Move to slot" style="width:9rem;text-transform:uppercase;font-family:var(--font-mono);font-weight:600">
-        <button type="submit">Move</button>
+        <input id="move-input" type="text" placeholder="${out ? "Return to slot, e.g. B3" : "New slot, e.g. B3"}" aria-label="${out ? "Return to slot" : "Move to slot"}" style="width:${out ? "12rem" : "9rem"};text-transform:uppercase;font-family:var(--font-mono);font-weight:600">
+        <button type="submit" class="${out ? "primary" : ""}">${out ? "Return to yard" : "Move"}</button>
+        <button type="button" data-act="pick" data-id="${esc(t.tank)}">Pick on map</button>
         ${gateButton(t)}
-      </form>` : `<p class="hint">To bring it back, tap the slot it's parked in on the map and add ${esc(fmtTank(t.tank))} there.</p>`}
+      </form>
+      ${out ? "" : `<form class="outside-box" id="out-form" autocomplete="off">
+        <span class="eyebrow">Move outside yard</span>
+        <div class="actions">
+          <input id="out-activity" class="caps keep" data-key="out-activity" type="text" placeholder="Remarks (required): what is being done" aria-label="Remarks (required)" aria-required="true" autocapitalize="characters">
+          <select id="out-place-sel" aria-label="Where (required)" aria-required="true">
+            <option value="" disabled selected hidden>Where? (required)</option>
+            ${PLACES.map(p => `<option value="${p}">${p}</option>`).join("")}
+            <option value="OTHER">Other (type it)</option>
+          </select>
+          <input id="out-place" class="caps" type="text" placeholder="Type the place" aria-label="Other place" autocapitalize="characters" hidden>
+          <button type="submit">Move outside</button>
+        </div>
+        <p class="hint">The tank leaves ${esc(t.location)} (the space becomes free) and shows under Outside yard with your remarks.</p>
+      </form>`}` : `<p class="hint">To bring it back, tap the slot it's parked in on the map and add ${esc(fmtTank(t.tank))} there.</p>`}
     ${hist.length ? `<div style="display:grid;gap:8px"><span class="eyebrow">History</span><ul class="history-list">${hist.map(h =>
       `<li><span class="when">${when(h.at)}</span><span>${esc(h.action)}${h.location ? " · " + esc(h.location) : ""}${h.status ? " · " + esc(STATUS[h.status] || h.status) : ""}</span><span class="hint">${who(h.by)}</span></li>`).join("")}</ul></div>` : ""}`;
   addForm.hidden = true;
+  $("result-body").innerHTML = "";
+  $("space-box").innerHTML = "";
 }
+
+// ---------- Outside the yard ----------
+let outFilter = "";
+function showOutside() {
+  view = { type: "outside" }; setMsg(msgEl, ""); renderView();
+  openSheet();
+}
+// A blank box to type new remarks (required) plus an Update button.
+const remarkEditor = t => `<div class="actions remark-edit">
+  <input class="caps keep" data-key="rem-${esc(t.tank)}" id="rem-${esc(t.tank)}" type="text" placeholder="Remarks (optional)" aria-label="New remarks for ${esc(fmtTank(t.tank))} (optional)" autocapitalize="characters">
+  <button type="button" class="small" data-act="remark-save" data-id="${esc(t.tank)}">Update remarks</button></div>`;
+function renderOutsideView() {
+  const all = outsideTanks().sort((a, b) => (a.outsideSince || "").localeCompare(b.outsideSince || ""));
+  const list = outFilter ? all.filter(t => activityText(t) === outFilter) : all;
+  const counts = {};
+  all.forEach(t => { counts[activityText(t)] = (counts[activityText(t)] || 0) + 1; });
+  resultEl.innerHTML = `
+    <div class="result-head">
+      <div class="code-big out">OUT</div>
+      <div>
+        <div class="zone">Outside yard</div>
+        <div class="hint">${all.length} tank${all.length === 1 ? "" : "s"} taken out of the yard. Their slots are free.</div>
+      </div>
+    </div>
+    ${all.length ? `<div class="chips"><button type="button" class="chip" data-act="out-filter" data-f="" aria-pressed="${!outFilter}">All ${all.length}</button>${
+      Object.keys(counts).sort().map(k => `<button type="button" class="chip" data-act="out-filter" data-f="${esc(k)}" aria-pressed="${outFilter === k}">${esc(k)} ${counts[k]}</button>`).join("")}</div>` : ""}`;
+  $("result-body").innerHTML = `<div style="display:grid;gap:8px">${list.length ? list.map(t => `
+    <div class="tank-row">
+      <div class="line1">
+        <button type="button" class="linkish tno" data-act="open" data-id="${esc(t.tank)}">${esc(fmtTank(t.tank))}</button>
+        <span class="pill activity">${esc(activityText(t))}</span>${pill(t.status)}
+      </div>
+      <div class="meta">${t.place ? esc(t.place) + " · " : ""}since ${when(t.outsideSince)} · by ${who(t.updatedBy)}${t.lastLocation ? " · came from " + esc(t.lastLocation) : ""}${t.customer ? " · " + esc(t.customer) : ""}${t.note ? " · " + esc(t.note) : ""}</div>
+      ${remarkEditor(t)}
+      <div class="actions move-row">
+        <input class="keep caps" data-key="mv-${esc(t.tank)}" id="mv-${esc(t.tank)}" type="text" placeholder="Return to slot, e.g. B3" aria-label="Return ${esc(fmtTank(t.tank))} to slot" autocapitalize="characters">
+        <button type="button" class="small primary" data-act="mv" data-id="${esc(t.tank)}">Return to yard</button>
+        <button type="button" class="small" data-act="pick" data-id="${esc(t.tank)}">Pick on map</button>${gateButton(t)}
+      </div>
+    </div>`).join("") : `<p class="empty-note">${all.length ? "No tanks with these remarks." : "No tanks are outside the yard. Open a tank's card and tap Move outside yard."}</p>`}</div>`;
+  addForm.hidden = true;
+  $("space-box").innerHTML = "";
+}
+// "Other" in the Where list shows a box to type the place.
+document.addEventListener("change", e => {
+  if (e.target.id !== "out-place-sel") return;
+  const other = $("out-place");
+  other.hidden = e.target.value !== "OTHER";
+  if (!other.hidden) other.focus();
+});
+// Enter in a remarks box works like its Update button.
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || !e.target.id || !(e.target.id.startsWith("rem-") || e.target.id.startsWith("mv-"))) return;
+  e.preventDefault();
+  const b = e.target.parentElement.querySelector('[data-act="remark-save"], [data-act="mv"]'); if (b) b.click();
+});
 
 function renderView() {
   const moveVal = $("move-input") ? $("move-input").value : "";
+  const outVal = $("out-place") ? [$("out-place").value, $("out-activity").value, $("out-place-sel").value] : null;
+  // Keep anything typed in the remarks boxes while live updates re-draw the page.
+  const kept = [...document.querySelectorAll("input.keep")].map(i => [i.dataset.key, i.value, i === document.activeElement]);
   // Keep what someone is typing in the details form when live updates re-draw the card.
   const act = document.activeElement;
   const det = act && act.closest && act.closest("#details-form") && view.type === "tank"
@@ -1098,8 +1271,14 @@ function renderView() {
   if (view.type === "tank") {
     const t = tanks.get(view.id);
     if (t) renderTankView(t); else { view = { type: "slot", code: "A1", example: true }; renderSlotView(SLOTS.A1); }
-  } else renderSlotView(SLOTS[view.code]);
+  } else if (view.type === "outside") renderOutsideView();
+  else renderSlotView(SLOTS[view.code]);
   if ($("move-input")) $("move-input").value = moveVal;
+  if (outVal && $("out-place")) { $("out-place").value = outVal[0]; $("out-activity").value = outVal[1]; if (outVal[2]) $("out-place-sel").value = outVal[2]; $("out-place").hidden = outVal[2] !== "OTHER"; }
+  kept.forEach(([key, val, focused]) => {
+    const el = document.querySelector(`input.keep[data-key="${CSS.escape(key)}"]`);
+    if (el) { el.value = val; if (focused) el.focus(); }
+  });
   if (det && view.type === "tank" && view.id === det.tank && $("det-customer")) {
     $("det-customer").value = det.c; $("det-note").value = det.n;
     if ($(det.focus)) $(det.focus).focus();
@@ -1116,9 +1295,10 @@ function updateAddWarn() {
   if (id) {
     const ok = isoCheckOk(id);
     if (ok === false) notes.push(`Check digit doesn't match for ${fmtTank(id)}. Double-check the number.`);
-    if (ok === null && id.length >= 4) notes.push("Not in the usual tank number format (4 letters + 7 digits). It will still save.");
+    if (ok === null) notes.push(`${11 - id.length} more character${11 - id.length === 1 ? "" : "s"} needed: tank numbers are 4 letters + 7 digits.`);
     const prev = tanks.get(id);
-    if (prev && prev.inYard && view.type === "slot" && prev.location !== view.code) notes.push(`${fmtTank(id)} is recorded at ${prev.location}. Saving moves it to ${view.code}.`);
+    if (prev && prev.inYard && prev.outside && !prev.location && view.type === "slot") notes.push(`${fmtTank(id)} is outside the yard (${activityText(prev)}). Saving brings it back to ${view.code}.`);
+    else if (prev && prev.inYard && view.type === "slot" && prev.location !== view.code) notes.push(`${fmtTank(id)} is recorded at ${prev.location}. Saving moves it to ${view.code}.`);
     if (prev && prev.inYard && view.type === "slot" && prev.location === view.code) notes.push(`${fmtTank(id)} is already here. Saving updates its status and note.`);
     if (prev && !prev.inYard) notes.push(`${fmtTank(id)} was gated out ${ago(prev.gatedOutAt)}. Saving gates it back in.`);
   }
@@ -1126,14 +1306,27 @@ function updateAddWarn() {
   addWarn.textContent = notes.join(" ");
 }
 // Tank number boxes: capitals, no spaces, as you type.
-function tidyTankBox(el) { const v = normTank(el.value); if (el.value !== v) el.value = v; }
+// Tank numbers are exactly 4 letters + 7 digits (e.g. SEGU8005369). While typing, the box keeps only
+// letters for the first 4 characters and only digits for the next 7, and stops at 11 characters.
+const TANK_RE = /^[A-Z]{4}\d{7}$/;
+function tankShape(raw) {
+  let out = "";
+  for (const ch of normTank(raw)) {
+    if (out.length < 4) { if (/[A-Z]/.test(ch)) out += ch; }
+    else if (out.length < 11) { if (/\d/.test(ch)) out += ch; }
+  }
+  return out;
+}
+function tidyTankBox(el) { const v = tankShape(el.value); if (el.value !== v) el.value = v; }
+const tankFormatMsg = id => `${id ? fmtTank(id) + " is not a tank number. " : ""}Tank numbers are 4 letters + 7 digits, e.g. SEGU8005369.`;
 tankInput.addEventListener("input", () => { tidyTankBox(tankInput); updateAddWarn(); });
 
 addForm.addEventListener("submit", e => {
   e.preventDefault();
   if (view.type !== "slot") return;
   const id = normTank(tankInput.value);
-  if (id.length < 4) { setMsg(msgEl, "Enter the tank number first.", "bad"); tankInput.focus(); return; }
+  if (!id) { setMsg(msgEl, "Enter the tank number first.", "bad"); tankInput.focus(); return; }
+  if (!TANK_RE.test(id)) { setMsg(msgEl, tankFormatMsg(id), "bad"); tankInput.focus(); return; }
   const status = addForm.querySelector('input[name="add-status"]:checked').value;
   const prev = tanks.get(id);
   const note = noteInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.note : "");
@@ -1147,10 +1340,29 @@ document.addEventListener("click", e => {
   const id = b.dataset.id;
   switch (b.dataset.act) {
     case "status": setStatus(id, b.dataset.st); break;
-    case "open": view = { type: "tank", id }; setMsg(msgEl, ""); renderView(); $("scan-title").scrollIntoView({ behavior: "smooth" }); break;
-    case "slot": view = { type: "slot", code: b.dataset.code }; setMsg(msgEl, ""); renderView(); $("scan-title").scrollIntoView({ behavior: "smooth" }); break;
+    case "open": view = { type: "tank", id }; setMsg(msgEl, ""); renderView(); openSheet(); break;
+    case "slot": view = { type: "slot", code: b.dataset.code }; setMsg(msgEl, ""); renderView(); openSheet(); break;
     case "gate": if (armed === "gate:" + id) { armed = null; gateOut(id); } else arm("gate:" + id); break;
     case "del": if (armed === "del:" + id) { armed = null; deleteRecord(id); } else arm("del:" + id); break;
+    case "outside": showOutside(); break;
+    case "out-filter": outFilter = b.dataset.f || ""; renderView(); break;
+    case "pick": startPick(id); break;
+    case "mv": {
+      // Move a tank to another slot straight from the slot pop-up.
+      const box = $("mv-" + id), t = tanks.get(id);
+      const code = box ? parseScan(box.value) : null;
+      if (!t) break;
+      if (!code || !SLOTS[code]) { setMsg(msgEl, "Type the slot, e.g. B3, or tap Pick on map.", "bad"); if (box) { box.classList.add("need"); box.focus(); } break; }
+      if (code === t.location) { setMsg(msgEl, `${fmtTank(id)} is already at ${code}.`, "info"); break; }
+      if (parkTank(id, code, t.status, t.note || "", t.customer || "")) box.value = "";
+      break;
+    }
+    case "remark-save": {
+      const box = $("rem-" + id);
+      if (!box || !box.value.trim()) { setMsg(msgEl, "Nothing to update: type new remarks in the box first (optional).", "info"); if (box) box.focus(); break; }
+      if (changeActivity(id, box.value)) box.value = "";
+      break;
+    }
     case "space-open": setOpenSpaces(b.dataset.code, capOf(b.dataset.code) + 1); break;
     case "space-close": setOpenSpaces(b.dataset.code, capOf(b.dataset.code) - 1); break;
     case "space-lock": setOpenSpaces(b.dataset.code, tanksAt(b.dataset.code).length); break;
@@ -1227,6 +1439,16 @@ document.addEventListener("submit", e => {
   if (code === t.location) { setMsg(msgEl, `${fmtTank(t.tank)} is already at ${code}.`, "info"); return; }
   $("move-input").value = "";
   parkTank(t.tank, code, t.status, t.note || "", t.customer || "");
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "out-form") return;
+  e.preventDefault();
+  const rem = $("out-activity"), sel = $("out-place-sel"), other = $("out-place");
+  if (!rem.value.trim()) { setMsg(msgEl, "Type the remarks first: what is being done to the tank outside the yard. Remarks are required.", "bad"); rem.classList.add("need"); rem.focus(); return; }
+  if (!sel.value) { setMsg(msgEl, "Choose where the tank is going: Workshop, Wash bay, Heating bay or Other.", "bad"); sel.classList.add("need"); sel.focus(); return; }
+  if (sel.value === "OTHER" && !other.value.trim()) { setMsg(msgEl, "You picked Other: type the place.", "bad"); other.classList.add("need"); other.focus(); return; }
+  const place = sel.value === "OTHER" ? other.value.trim().toUpperCase() : sel.value;
+  if (moveOutside(view.id, rem.value, place) !== false) { rem.value = ""; other.value = ""; sel.value = ""; other.hidden = true; }
 });
 $("scan-form").addEventListener("submit", e => {
   e.preventDefault();
@@ -1467,7 +1689,7 @@ $("ocr-again").addEventListener("click", () => { closeTankConfirm(); openTankCam
 ocrInput.addEventListener("keydown", e => { if (e.key === "Enter") $("ocr-ok").click(); });
 $("ocr-ok").addEventListener("click", () => {
   const id = normTank(ocrInput.value);
-  if (id.length < 4) { $("ocr-check").textContent = "Type the tank number first."; ocrInput.readOnly = false; ocrInput.focus(); return; }
+  if (!TANK_RE.test(id)) { $("ocr-check").textContent = id ? tankFormatMsg(id) : "Type the tank number first."; ocrInput.readOnly = false; ocrInput.focus(); return; }
   closeTankConfirm();
   if (camTarget === "tank") { tankInput.value = fmtTank(id); updateAddWarn(); tankInput.focus(); return; }
   if (tanks.has(id)) { lookup(id, "camera"); return; }
@@ -1476,7 +1698,7 @@ $("ocr-ok").addEventListener("click", () => {
   updateAddWarn();
   if (view.type === "slot") { setMsg(msgEl, `${fmtTank(id)} is new. Check the status and tap Save tank to park it at ${view.code}.`, "info"); tankInput.focus(); }
   else setMsg(msgEl, `${fmtTank(id)} isn't in the yard yet. Tap its slot on the yard map (or type the slot, e.g. A1), then tap Save tank. The number is already filled in.`, "info");
-  $("scan-title").scrollIntoView({ behavior: "smooth" });
+  openSheet();
 });
 
 $("cam-btn").addEventListener("click", () => openTankCamera("lookup"));
@@ -1484,12 +1706,32 @@ $("fab").addEventListener("click", () => openTankCamera("lookup"));
 $("tank-cam").addEventListener("click", () => openTankCamera("tank"));
 $("cam-type").addEventListener("click", () => { closeCamera(); showTankConfirm([]); });
 $("cam-close").addEventListener("click", closeCamera);
-// Android back button: close the camera or the confirm box first, otherwise let the app exit.
+// Android back button: close the camera, the confirm box or the slot pop-up first, otherwise let the app exit.
 window.onAndroidBack = () => {
   if (!ocrConfirm.hidden) { closeTankConfirm(); return true; }
   if (!camera.hidden) { closeCamera(); return true; }
+  if (!sheetEl.hidden) { closeSheet(); return true; }
+  if (pickFor) { stopPick(); return true; }
   return false;
 };
+$("pick-cancel").addEventListener("click", stopPick);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && pickFor) stopPick(); });
+
+// ---------- Slot / tank pop-up ----------
+const sheetEl = $("sheet");
+function openSheet() {
+  const wasOpen = !sheetEl.hidden;
+  sheetEl.hidden = false;
+  document.body.classList.add("sheet-open");
+  if (!wasOpen) sheetEl.scrollTop = 0;
+}
+function closeSheet() {
+  sheetEl.hidden = true;
+  document.body.classList.remove("sheet-open");
+}
+$("sheet-close").addEventListener("click", closeSheet);
+sheetEl.addEventListener("click", e => { if (e.target === sheetEl) closeSheet(); }); // tap outside the card
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !sheetEl.hidden && camera.hidden && ocrConfirm.hidden) closeSheet(); });
 
 // ---------- Register ----------
 let regTab = "in";
@@ -1501,7 +1743,7 @@ regSearch.addEventListener("input", () => renderRegister());
 function registerRows() {
   const q = regSearch.value.trim().toUpperCase();
   const qn = normTank(q);
-  let rows = [...tanks.values()].filter(t => regTab === "in" ? (t.inYard && t.location) : !t.inYard);
+  let rows = [...tanks.values()].filter(t => regTab === "in" ? (t.inYard && (t.location || t.outside)) : !t.inYard);
   if (regTab === "in" && filter && filter !== "all" && filter !== "free") rows = rows.filter(t => t.status === filter);
   if (q) rows = rows.filter(t => (qn && t.tank.includes(qn)) || (t.location || t.lastLocation || "") === q || (t.note || "").toUpperCase().includes(q) || (t.customer || "").toUpperCase().includes(q));
   if (regTab === "in") rows.sort((a, b) => slotRank(a.location) - slotRank(b.location) || a.tank.localeCompare(b.tank));
@@ -1524,8 +1766,9 @@ function renderRegister() {
       <tr>
         <td class="mono"><button type="button" class="linkish" data-act="open" data-id="${esc(t.tank)}">${esc(fmtTank(t.tank))}</button></td>
         <td>${esc(t.customer || "")}</td>
-        <td class="mono"><button type="button" class="linkish" data-act="slot" data-code="${esc(t.location)}">${esc(t.location)}</button></td>
-        <td>${SLOTS[t.location] ? SLOTS[t.location].zone : ""}</td>
+        <td class="mono">${t.location ? `<button type="button" class="linkish" data-act="slot" data-code="${esc(t.location)}">${esc(t.location)}</button>`
+          : `<button type="button" class="linkish" data-act="outside">Outside</button> <span class="hint">${esc(activityText(t))}</span>`}</td>
+        <td>${SLOTS[t.location] ? SLOTS[t.location].zone : "–"}</td>
         <td>${pill(t.status)}</td><td>${esc(fullDate(currentDateIn(t)))}</td><td>${esc(t.note || "")}</td><td>${who(t.updatedBy)}</td>
       </tr>`).join("")}</tbody>`;
   } else {
@@ -1574,7 +1817,7 @@ function visitsOf(t) {
   let last = visits[visits.length - 1];
   if (t.inYard) {
     if (!last || last.dateOut) { last = { tank: t.tank, dateIn: t.dateIn || t.statusSince || t.updatedAt, dateOut: null }; visits.push(last); }
-    Object.assign(last, { status: t.status, slot: t.location, customer: t.customer || last.customer || "", note: t.note || "", by: t.updatedBy });
+    Object.assign(last, { status: t.status, slot: t.location || (t.outside ? "OUTSIDE: " + activityText(t).toUpperCase() : ""), customer: t.customer || last.customer || "", note: t.note || "", by: t.updatedBy });
     if (t.dateIn) last.dateIn = t.dateIn;
   } else if (!last) {
     visits.push({ tank: t.tank, dateIn: t.dateIn || null, dateOut: t.gatedOutAt, status: t.status, slot: t.lastLocation, customer: t.customer || "", note: t.note || "", by: t.updatedBy });
@@ -1708,82 +1951,6 @@ document.querySelectorAll("[data-ex]").forEach(btn => btn.addEventListener("clic
       : "The file couldn't be saved. Try again.", code === "declined" ? "info" : "bad");
   }
 }));
-
-// ---------- Labels ----------
-const chipsEl = $("zone-chips");
-let picked = new Set([1]);
-function renderChips() {
-  chipsEl.innerHTML = `<button type="button" class="chip" data-z="all" aria-pressed="${picked.size === 15}">All</button>` +
-    Array.from({ length: 15 }, (_, i) => i + 1).map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${picked.has(z)}">${z}</button>`).join("");
-}
-chipsEl.addEventListener("click", e => {
-  const b = e.target.closest(".chip");
-  if (!b) return;
-  if (b.dataset.z === "all") picked = picked.size === 15 ? new Set([1]) : new Set(Array.from({ length: 15 }, (_, i) => i + 1));
-  else { const z = Number(b.dataset.z); if (picked.has(z) && picked.size > 1) picked.delete(z); else picked.add(z); }
-  renderChips();
-});
-const pickedSlots = () => [...picked].sort((a, b) => a - b).flatMap(z => ZONES[z].slots);
-
-// Codes are drawn into the PDF as vector rectangles: sharp at any size and a small file.
-function pdfQr(doc, text, x, y, size) {
-  const q = qrcode(0, "M");
-  q.addData(text);
-  q.make();
-  const n = q.getModuleCount(), cell = size / n;
-  for (let r = 0; r < n; r++) {
-    let c = 0;
-    while (c < n) {
-      if (!q.isDark(r, c)) { c++; continue; }
-      const start = c;
-      while (c < n && q.isDark(r, c)) c++;
-      doc.rect(x + start * cell, y + r * cell, (c - start) * cell + 0.01, cell + 0.01, "F");
-    }
-  }
-}
-function pdfBar(doc, code, x, y, w, h) {
-  const cv = document.createElement("canvas");
-  JsBarcode(cv, code, { format: "CODE128", displayValue: false, margin: 0, width: 1, height: 2, background: "#ffffff", lineColor: "#000000" });
-  const px = cv.getContext("2d").getImageData(0, 0, cv.width, 1).data;
-  const unit = w / cv.width;
-  let i = 0;
-  while (i < cv.width) {
-    if (px[i * 4] >= 128) { i++; continue; }
-    const start = i;
-    while (i < cv.width && px[i * 4] < 128) i++;
-    doc.rect(x + start * unit, y, (i - start) * unit, h, "F");
-  }
-}
-function buildPdf(slots, kind, content) {
-  const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: true });
-  const M = 10, COLS = 2, ROWS = 5, W = (210 - 2 * M) / COLS, H = (297 - 2 * M) / ROWS;
-  slots.forEach((s, i) => {
-    const p = i % (COLS * ROWS);
-    if (i && p === 0) doc.addPage();
-    const x = M + (p % COLS) * W, y = M + Math.floor(p / COLS) * H;
-    doc.setDrawColor(170); doc.setLineWidth(0.2);
-    doc.setLineDashPattern([1.5, 1.5], 0); doc.rect(x, y, W, H); doc.setLineDashPattern([], 0);
-    const qrSize = 42, tx = kind === "bar" ? x + 7 : x + qrSize + 9;
-    doc.setFillColor(0, 0, 0);
-    if (kind !== "bar") pdfQr(doc, qrText(s, content), x + 5, y + (H - qrSize) / 2, qrSize);
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(kind === "bar" ? 44 : 40);
-    doc.text(s.code, tx, y + 19);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
-    doc.text(`Zone ${s.zone} · ${s.section} section`, tx, y + 26);
-    doc.text(`Column ${s.col} of ${s.cols} · Row ${s.row} of ${s.rows}`, tx, y + 31);
-    if (kind !== "qr") pdfBar(doc, s.code, tx, y + 35, x + W - 6 - tx, kind === "bar" ? 15 : 13);
-    doc.setFontSize(7); doc.setTextColor(120);
-    doc.text("RSAT Yard", x + W - 5, y + H - 3, { align: "right" });
-  });
-  return doc.output("blob");
-}
-$("download-btn").addEventListener("click", () => {
-  const zones = [...picked].sort((a, b) => a - b);
-  const name = `RSAT-yard-labels-${zones.length === 15 ? "all-zones" : "zone-" + zones.join("-")}.pdf`;
-  saveFile(name, buildPdf(pickedSlots(), $("label-kind").value, $("qr-content").value), "application/pdf");
-  setMsg($("dl-msg"), `Made ${name} (${pickedSlots().length} labels).`, "info");
-});
 
 // ---------- Start ----------
 function setSync() {
@@ -2050,7 +2217,6 @@ function checkForUpdate() {
     .catch(() => { /* offline: check again next time */ });
 }
 
-renderChips();
 const cfg = window.FIREBASE_CONFIG || {};
 if (window.APK_URL && !window.AndroidBridge) { $("apk-link").href = window.APK_URL; $("apk-link-wrap").hidden = false; }
 
