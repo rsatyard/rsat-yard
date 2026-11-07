@@ -168,7 +168,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void shareFile(String name, String base64, String mime) {
             try {
-                String safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+                // Keeps letters, digits, . _ - space and the slash look-alike used in the date of export names.
+                String safe = name.replaceAll("[^A-Za-z0-9._ \\u2215-]", "_");
                 File dir = new File(getCacheDir(), "exports");
                 if (!dir.exists() && !dir.mkdirs()) throw new Exception("no export folder");
                 File file = new File(dir, safe);

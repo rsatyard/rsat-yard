@@ -843,6 +843,8 @@ function ago(iso) {
   return d === 1 ? "1 day ago" : d + " days ago";
 }
 const fullDate = iso => iso ? new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+// Exports show dates without the time, e.g. 07-Nov-2026.
+const exDate = iso => { if (!iso) return ""; const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}-${d.toLocaleString("en", { month: "short" })}-${d.getFullYear()}`; };
 const when = iso => `<span title="${esc(fullDate(iso))}">${esc(ago(iso))}</span>`;
 const person = email => email ? String(email).split("@")[0] : "Someone";
 const who = email => esc(person(email));
@@ -2056,7 +2058,7 @@ function renderExport() {
   $("ex-count").textContent = `${rows.length} row${rows.length === 1 ? "" : "s"} · ${cols.length} columns${rows.length > 5 ? " · first 5 shown" : ""}`;
   $("ex-preview").innerHTML = rows.length
     ? `<thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows.slice(0, 5).map(v =>
-        `<tr>${cols.map(c => { const val = c.get(v); return `<td>${esc(c.date ? fullDate(val) : val)}</td>`; }).join("")}</tr>`).join("")}</tbody>`
+        `<tr>${cols.map(c => { const val = c.get(v); return `<td>${esc(c.date ? exDate(val) : val)}</td>`; }).join("")}</tr>`).join("")}</tbody>`
     : `<tbody><tr><td class="hint">${dataState === "connecting" ? "Loading tank records…" : "No tank visits match these settings."}</td></tr></tbody>`;
 }
 function historySheet() {
@@ -2066,25 +2068,153 @@ function historySheet() {
     const d = h.at ? new Date(h.at) : null;
     if ((from && (!d || d < from)) || (to && (!d || d > to))) return;
     rows.push({ at: h.at || "", r: {
-      "Date and time": d || "", "Tank number": fmtTank(t.tank), "Customer": h.customer !== undefined ? h.customer : (t.customer || ""),
+      "Date": d || "", "Tank number": fmtTank(t.tank), "Customer": h.customer !== undefined ? h.customer : (t.customer || ""),
       "Action": h.action, "Slot": h.location || "", "Status": STATUS[h.status] || h.status || "", "By": exPerson(h.by),
     } });
   }));
   rows.sort((a, b) => b.at.localeCompare(a.at));
-  const ws = XLSX.utils.json_to_sheet(rows.map(x => x.r), { header: ["Date and time", "Tank number", "Customer", "Action", "Slot", "Status", "By"], dateNF: "dd-mmm-yyyy hh:mm" });
+  const ws = XLSX.utils.json_to_sheet(rows.map(x => x.r), { header: ["Date", "Tank number", "Customer", "Action", "Slot", "Status", "By"], dateNF: "dd-mmm-yyyy" });
   ws["!cols"] = [{ wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, { wch: 14 }, { wch: 18 }];
   return ws;
 }
+// ---------- Branded Excel file (logo, title, colours) ----------
+// ExcelJS can put the logo and colours in the file; it loads only when someone exports.
+// If it can't load, the plain export (SheetJS) is used instead.
+let excelJsReady = null;
+function loadExcelJs() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if (!excelJsReady) excelJsReady = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "lib/exceljs.min.js";
+    s.onload = () => window.ExcelJS ? resolve(window.ExcelJS) : reject(new Error("ExcelJS missing"));
+    s.onerror = () => { excelJsReady = null; reject(new Error("ExcelJS didn't load")); };
+    document.head.appendChild(s);
+  });
+  return excelJsReady;
+}
+async function logoForExcel() {
+  const blob = await (await fetch("img/rsa-talke-logo.png")).blob();
+  const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+  const size = await new Promise(res => { const i = new Image(); i.onload = () => res([i.naturalWidth, i.naturalHeight]); i.onerror = () => res([260, 45]); i.src = dataUrl; });
+  return { base64: dataUrl.split(",")[1], w: size[0], h: size[1] };
+}
+const XL = {
+  navy: "FF13237A", red: "FFC4122F", white: "FFFFFFFF", ink: "FF1B2233", muted: "FF586079", line: "FFD0D7E2", zebra: "FFF4F6FA",
+  status: { loaded: ["FF2F5FA7", "FFDDE7F6"], empty_clean: ["FF2A8553", "FFD9EFE1"], empty_dirty: ["FF94541F", "FFF3E3D3"],
+    gas_laden: ["FF6B3FA0", "FFE8DEF4"], gas_empty: ["FFA0699E", "FFF3E4F2"] },
+};
+const xlFill = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+const xlThin = { style: "thin", color: { argb: XL.line } };
+// One sheet: logo + title block, red line, navy header row, the rows, then a total.
+function brandedSheet(wb, logoId, logo, name, title, filterText, headers, widths, rows, statusCol) {
+  const ws = wb.addWorksheet(name, {
+    views: [{ state: "frozen", ySplit: 6, showGridLines: false }],
+    pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 }, printTitlesRow: "6:6" },
+    headerFooter: { oddFooter: `&L&8RSA Talke · RSAT Yard&C&8${title}&R&8Page &P of &N` },
+  });
+  const n = headers.length;
+  ws.columns = widths.map(w => ({ width: w }));
+  ws.getRow(1).height = 24; ws.getRow(2).height = 22; ws.getRow(3).height = 18; ws.getRow(4).height = 18; ws.getRow(5).height = 6;
+  // Logo top-left (about 190 px wide), title and details to the right of it.
+  const lw = 190, lh = Math.round(lw * logo.h / logo.w);
+  ws.addImage(logoId, { tl: { col: 0.15, row: 0.4 }, ext: { width: lw, height: lh }, editAs: "oneCell" });
+  const textCol = Math.min(3, n);   // title starts in the 3rd column (after the logo), or the last one in narrow sheets
+  const t = ws.getCell(1, textCol);
+  t.value = title; t.font = { name: "Arial", size: 16, bold: true, color: { argb: XL.navy } };
+  const d = ws.getCell(2, textCol);
+  d.value = `RSAT Yard · exported ${exDate(new Date().toISOString())} by ${(profile && profile.name) || person(me && me.email)}`;
+  d.font = { name: "Arial", size: 10, color: { argb: XL.muted } };
+  const f = ws.getCell(3, textCol);
+  f.value = filterText; f.font = { name: "Arial", size: 10, italic: true, color: { argb: XL.muted } };
+  const c4 = ws.getCell(4, textCol);
+  c4.value = `${rows.length} row${rows.length === 1 ? "" : "s"}`; c4.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.ink } };
+  // Red line under the title block (the brand colour), across all columns.
+  for (let c = 1; c <= n; c++) ws.getCell(5, c).border = { bottom: { style: "medium", color: { argb: XL.red } } };
+  // Header row.
+  const hr = ws.getRow(6);
+  hr.values = headers; hr.height = 22;
+  hr.eachCell(cell => {
+    cell.fill = xlFill(XL.navy);
+    cell.font = { name: "Arial", size: 10, bold: true, color: { argb: XL.white } };
+    cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+    cell.border = { top: xlThin, bottom: xlThin, left: xlThin, right: xlThin };
+  });
+  // Data rows: light stripes, thin borders, dates as real Excel dates, the status cell in its colour.
+  rows.forEach((r, i) => {
+    // Exports show the date only (no time): keep the local calendar day, written as a plain Excel date.
+    const row = ws.addRow(r.values.map(v => v instanceof Date ? new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate())) : v));
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      if (col > n) return;
+      cell.font = { name: "Arial", size: 10, color: { argb: XL.ink } };
+      cell.alignment = { vertical: "middle" };
+      cell.border = { top: xlThin, bottom: xlThin, left: xlThin, right: xlThin };
+      if (i % 2) cell.fill = xlFill(XL.zebra);
+      if (cell.value instanceof Date) { cell.numFmt = "dd-mmm-yyyy"; cell.alignment = { vertical: "middle", horizontal: "left" }; }
+    });
+    if (statusCol && r.status && XL.status[r.status]) {
+      const [ink, soft] = XL.status[r.status];
+      const cell = row.getCell(statusCol);
+      cell.fill = xlFill(soft); cell.font = { name: "Arial", size: 10, bold: true, color: { argb: ink } };
+    }
+  });
+  ws.autoFilter = { from: { row: 6, column: 1 }, to: { row: 6 + rows.length, column: n } };
+  const tot = ws.addRow([]); tot.height = 6;
+  const tr = ws.addRow([`Total: ${rows.length}`]);
+  tr.getCell(1).font = { name: "Arial", size: 10, bold: true, color: { argb: XL.navy } };
+  return ws;
+}
+async function brandedWorkbook(rows, cols) {
+  const ExcelJS = await loadExcelJs();
+  const logo = await logoForExcel();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "RSAT Yard"; wb.created = new Date();
+  const logoId = wb.addImage({ base64: logo.base64, extension: "png" });
+  const statusName = exCfg.status ? STATUS[exCfg.status] : "All statuses";
+  const scopeName = { all: "All visits", in: "Still in the yard", out: "Gated out" }[exCfg.scope] || "All visits";
+  const dates = exCfg.from || exCfg.to ? `Date in ${exCfg.from || "…"} to ${exCfg.to || "…"}` : "All dates";
+  const filterText = `Showing: ${scopeName} · ${exCfg.customer || "All customers"} · ${statusName} · ${dates}`;
+  const statusIdx = cols.findIndex(c => c.key === "status");
+  brandedSheet(wb, logoId, logo, "Tanks", "TANK REPORT", filterText,
+    cols.map(c => c.label),
+    cols.map(c => c.date ? 14 : c.key === "note" ? 32 : c.key === "customer" ? 24 : c.key === "tank" ? 17 : c.key === "status" ? 18 : Math.max(11, c.label.length + 3)),
+    rows.map(v => ({ status: v.status, values: cols.map(c => { const val = c.get(v); return c.date ? (val ? new Date(val) : "") : val; }) })),
+    statusIdx >= 0 ? statusIdx + 1 : 0);
+  if (exCfg.history) {
+    const [from, to] = exRange();
+    const hist = [];
+    tanks.forEach(t => (t.history || []).forEach(h => {
+      const dt = h.at ? new Date(h.at) : null;
+      if ((from && (!dt || dt < from)) || (to && (!dt || dt > to))) return;
+      hist.push({ at: h.at || "", status: h.status, values: [dt || "", fmtTank(t.tank), h.customer !== undefined ? h.customer : (t.customer || ""),
+        h.action, h.location || "", STATUS[h.status] || h.status || "", exPerson(h.by)] });
+    }));
+    hist.sort((a, b) => b.at.localeCompare(a.at));
+    brandedSheet(wb, logoId, logo, "Tank history", "TANK HISTORY", filterText,
+      ["Date", "Tank number", "Customer", "Action", "Slot", "Status", "By"], [14, 17, 24, 34, 9, 18, 18], hist, 6);
+  }
+  return wb.xlsx.writeBuffer();
+}
+
 document.querySelectorAll("[data-ex]").forEach(btn => btn.addEventListener("click", async () => {
   if (dataState === "connecting") { setMsg(exMsg, "Tank records are still loading. Try again in a moment.", "bad"); return; }
   const rows = exVisits(), cols = exCols();
   if (!rows.length) { setMsg(exMsg, "No tank visits match these settings. Change the filters, then export again.", "bad"); return; }
   await exPrepare();
-  const base = `RSAT-yard-tanks-${new Date().toISOString().slice(0, 10)}`;
+  // File name: RSAT-YARD-EXPORT-DD/MM/YYYY-HH_MM (local time). A real "/" isn't allowed in file names, so the date
+  // uses "∕" (U+2215, a slash look-alike that Windows and Android accept).
+  const nowD = new Date(), p2 = n => String(n).padStart(2, "0");
+  const base = `RSAT-YARD-EXPORT-${p2(nowD.getDate())}∕${p2(nowD.getMonth() + 1)}∕${nowD.getFullYear()}-${p2(nowD.getHours())}_${p2(nowD.getMinutes())}`;
   try {
     if (btn.dataset.ex === "xlsx") {
+      let branded = null;
+      try { branded = await brandedWorkbook(rows, cols); } catch (e) { console.warn("Branded export failed, using the plain one", e); }
+      if (branded) {
+        await exSave(base + ".xlsx", new Blob([branded], { type: XLSX_MIME }), XLSX_MIME);
+        setMsg(exMsg, `Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to ${base}.xlsx.`, "info");
+        return;
+      }
       const data = rows.map(v => { const r = {}; cols.forEach(c => { const val = c.get(v); r[c.label] = c.date ? (val ? new Date(val) : "") : val; }); return r; });
-      const ws = XLSX.utils.json_to_sheet(data, { header: cols.map(c => c.label), dateNF: "dd-mmm-yyyy hh:mm" });
+      const ws = XLSX.utils.json_to_sheet(data, { header: cols.map(c => c.label), dateNF: "dd-mmm-yyyy" });
       ws["!cols"] = cols.map(c => ({ wch: c.date ? 18 : c.key === "note" ? 30 : c.key === "customer" ? 24 : Math.max(10, c.label.length + 3) }));
       ws["!autofilter"] = { ref: ws["!ref"] };
       const wb = XLSX.utils.book_new();
@@ -2095,7 +2225,7 @@ document.querySelectorAll("[data-ex]").forEach(btn => btn.addEventListener("clic
       setMsg(exMsg, `Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to ${base}.xlsx.`, "info");
     } else {
       const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-      const lines = [cols.map(c => q(c.label)).join(","), ...rows.map(v => cols.map(c => { const val = c.get(v); return q(c.date ? fullDate(val) : val); }).join(","))];
+      const lines = [cols.map(c => q(c.label)).join(","), ...rows.map(v => cols.map(c => { const val = c.get(v); return q(c.date ? exDate(val) : val); }).join(","))];
       await exSave(base + ".csv", new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }), "text/csv");
       setMsg(exMsg, `Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to ${base}.csv.`, "info");
     }
