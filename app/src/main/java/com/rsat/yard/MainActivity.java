@@ -6,9 +6,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -30,9 +32,12 @@ import java.io.FileOutputStream;
 public class MainActivity extends Activity {
     private static final String START_URL = "https://appassets.androidplatform.net/assets/www/index.html";
     private static final int CAMERA_REQUEST = 1;
+    private static final int FILE_REQUEST = 2;
 
     private WebView web;
     private PermissionRequest pendingPermission;
+    private ValueCallback<Uri[]> fileCallback;
+    private Uri photoUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +83,39 @@ public class MainActivity extends Activity {
                     requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
                 }
             }
+
+            // Photo button in the chat: choose from the gallery, or take a photo with the camera app.
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                photoUri = null;
+                Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                pick.setType("image/*");
+                Intent chooser = Intent.createChooser(pick, "Send a photo");
+                // The camera option needs the camera permission (the app asks for it when scanning).
+                if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    try {
+                        File dir = new File(getCacheDir(), "photos");
+                        if (dir.exists() || dir.mkdirs()) {
+                            File shot = new File(dir, "shot-" + System.currentTimeMillis() + ".jpg");
+                            photoUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", shot);
+                            Intent take = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                            take.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                            take.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{take});
+                        }
+                    } catch (Exception ignored) { photoUri = null; }
+                }
+                try {
+                    startActivityForResult(chooser, FILE_REQUEST);
+                } catch (Exception e) {
+                    fileCallback = null;
+                    return false;
+                }
+                return true;
+            }
         });
 
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
@@ -95,6 +133,20 @@ public class MainActivity extends Activity {
             pendingPermission.deny();
         }
         pendingPermission = null;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != FILE_REQUEST || fileCallback == null) return;
+        Uri[] result = null;
+        if (resultCode == RESULT_OK) {
+            if (data != null && data.getData() != null) result = new Uri[]{data.getData()};
+            else if (photoUri != null) result = new Uri[]{photoUri};   // taken with the camera
+        }
+        fileCallback.onReceiveValue(result);
+        fileCallback = null;
+        photoUri = null;
     }
 
     @Override

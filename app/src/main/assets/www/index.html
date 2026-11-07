@@ -84,7 +84,7 @@ h3 { font-size: 1.02rem; text-transform: uppercase; }
 
 .wrap {
   max-width: 1240px; margin: 0 auto; display: grid; gap: 16px;
-  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(96px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(150px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
 .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 600; }
@@ -168,7 +168,18 @@ button:focus-visible, .slot:focus-visible { outline: 3px solid var(--accent); ou
 .main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 /* Slot / tank pop-up over the map: two columns on wide screens, one on phones. */
 .sheet { position: fixed; inset: 0; z-index: 45; background: rgba(5, 10, 30, 0.6); overflow-y: auto; display: flex; justify-content: center; align-items: flex-start;
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 12px calc(24px + env(safe-area-inset-bottom, 0px)); }
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 12px calc(96px + env(safe-area-inset-bottom, 0px)); }
+/* The red Scan button stays on top of the pop-up, so it can be used from there too. */
+body.sheet-open .fab { z-index: 46; }
+.scan-pop {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  z-index: 47; width: min(420px, calc(100% - 32px)); box-shadow: 0 12px 40px rgba(0,0,0,0.45); border-top: 4px solid var(--brand-red);
+}
+.scan-pop .scan-tools { border-top: 0; padding-top: 0; }
+/* One column: the spaces box sits under Park a tank (the right column only holds the hidden scan box). */
+.sheet-panel { width: min(640px, 100%); }
+.sheet-cols { grid-template-columns: minmax(0, 1fr) !important; }
+.sheet-right { display: none; }
 .sheet-panel { width: min(980px, 100%); box-shadow: 0 24px 60px rgba(0,0,0,0.45); border-top: 4px solid var(--brand-red); }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sheet-close { padding: 6px 12px; font-size: 0.85rem; }
@@ -378,6 +389,39 @@ form.details { display: grid; gap: 8px; }
 .tabs button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .fab { background: var(--brand-red); border-color: var(--brand-red); color: #fff; font-weight: 700; }
 .fab:hover { background: var(--brand-red); }
+/* Team chat: a round button above Scan, and a panel that slides in on the right. */
+.chat-fab {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 30; border-radius: 999px; padding: 12px 18px; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  background: var(--surface); border-color: var(--line);
+}
+.chat {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(380px, 100%);
+  display: grid; grid-template-rows: auto 1fr auto; background: var(--surface); border-left: 1px solid var(--line);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.25);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
+}
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.chat-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; min-height: 0; }
+.chat-msg { max-width: 85%; align-self: flex-start; background: var(--slot); border-radius: 10px 10px 10px 2px; padding: 6px 10px; }
+.chat-msg.mine { align-self: flex-end; background: var(--accent-soft); border-radius: 10px 10px 2px 10px; }
+.chat-msg .who { font-size: 0.74rem; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.chat-msg .who b { color: var(--ink); }
+.chat-msg .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-msg .del { margin-left: auto; padding: 0 4px; border: 0; background: none; color: var(--muted); font-size: 0.72rem; }
+.chat-day { align-self: center; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.chat-form { display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.chat-form input { flex: 1; }
+.chat-photo-btn { display: inline-grid; place-items: center; width: 44px; flex: none; border: 1px solid var(--line); border-radius: 8px; background: var(--slot); cursor: pointer; }
+.chat-photo-btn:hover { background: var(--slot-hover); }
+.chat-photo-btn.busy { opacity: 0.5; pointer-events: none; }
+.chat-msg .thumb { display: block; margin-top: 4px; padding: 0; border: 0; background: none; border-radius: 8px; overflow: hidden; cursor: zoom-in; }
+.chat-msg .thumb img { display: block; max-width: 100%; max-height: 220px; border-radius: 8px; }
+.photo-view { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.9); display: grid; place-items: center; grid-template-rows: auto 1fr auto; gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.photo-view #photo-close { justify-self: end; }
+.photo-view img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.photo-view .hint { color: #ccc; }
 /* Open / closed spaces: admins see closed spaces as hollow rings and a red dot where a request waits; a closed slot is striped. */
 .slot .dots i.x { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); opacity: 0.55; }
 .slot.closed { background: repeating-linear-gradient(135deg, var(--slot) 0 5px, var(--slot-hover) 5px 10px); color: var(--muted); }
@@ -518,25 +562,23 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
           </fieldset>
           <input id="customer-input" class="caps" type="text" list="customer-list" placeholder="Customer (optional)" aria-label="Customer (optional)" autocapitalize="characters">
           <datalist id="customer-list"></datalist>          <input id="note-input" class="caps" type="text" placeholder="Note (optional): product, seal no." aria-label="Note (optional)" autocapitalize="characters">
+          <div class="actions" id="add-out-fields" hidden>
+            <input id="add-out-rem" class="caps" type="text" placeholder="Remarks (required): what is being done" aria-label="Remarks (required)" aria-required="true" autocapitalize="characters">
+            <select id="add-out-sel" aria-label="Where (required)" aria-required="true">
+              <option value="" disabled selected hidden>Where? (required)</option>
+              <option value="WORKSHOP">WORKSHOP</option><option value="WASH BAY">WASH BAY</option><option value="HEATING BAY">HEATING BAY</option>
+              <option value="OTHER">Other (type it)</option>
+            </select>
+            <input id="add-out-place" class="caps" type="text" placeholder="Type the place" aria-label="Other place" autocapitalize="characters" hidden>
+          </div>
           <p id="add-warn" class="hint" hidden></p>
           <button class="primary" type="submit" id="add-btn">Save tank</button>
         </form>
+        <div id="space-box"></div>
         <div class="result-body" id="result-body"></div>
         </div>
         <div class="sheet-right">
-        <div id="space-box"></div>
 
-        <div class="scan-tools">
-          <button class="primary big-scan" type="button" id="cam-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
-            Scan tank number
-          </button>
-          <form class="lookup" id="scan-form" autocomplete="off">
-            <input id="scan-input" type="text" placeholder="Slot (A1) or tank no." aria-label="Slot code or tank number">
-            <button type="submit">Look up</button>
-          </form>
-          <p class="hint">Point the camera at the number painted on the tank (4 letters + 7 digits), then tap OK or Edit to correct it. Or type a slot (A1) or tank number in the box.</p>
-        </div>
         </div>
         </div>
       </section>
@@ -635,7 +677,42 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
     </footer>
   </div>
 
-  <button class="primary fab" type="button" id="fab">Scan</button>
+  <button class="primary fab" type="button" id="fab" aria-controls="scan-pop" aria-expanded="false">Scan</button>
+  <!-- The red Scan button opens this: camera scan, or type a slot / tank number to look it up. -->
+  <div class="scan-pop panel" id="scan-pop" hidden role="dialog" aria-label="Scan or look up">
+    <div class="scan-tools">
+      <p id="scan-pop-msg" class="msg" hidden></p>
+      <button class="primary big-scan" type="button" id="cam-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10"/></svg>
+        Scan tank number
+      </button>
+      <form class="lookup" id="scan-form" autocomplete="off">
+        <input id="scan-input" type="text" placeholder="Slot (A1) or tank no." aria-label="Slot code or tank number">
+        <button type="submit">Look up</button>
+      </form>
+      <p class="hint">Point the camera at the number painted on the tank (4 letters + 7 digits), then tap OK or Edit to correct it. Or type a slot (A1) or tank number in the box.</p>
+    </div>
+  </div>
+  <button class="chat-fab" type="button" id="chat-fab" aria-controls="chat" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Chat<span class="badge" id="chat-badge" hidden></span>
+  </button>
+  <aside class="chat" id="chat" hidden aria-labelledby="chat-title">
+    <div class="chat-head"><h2 id="chat-title">Team chat</h2><button type="button" class="small" id="chat-close">✕ Close</button></div>
+    <div class="chat-list" id="chat-list" aria-live="polite"></div>
+    <form class="chat-form" id="chat-form" autocomplete="off">
+      <label class="chat-photo-btn" title="Send a photo" aria-label="Send a photo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <input type="file" id="chat-file" accept="image/*" hidden>
+      </label>
+      <input id="chat-input" type="text" maxlength="500" placeholder="Type a message" aria-label="Message">
+      <button type="submit" class="primary">Send</button>
+    </form>
+  </aside>
+  <div class="photo-view" id="photo-view" hidden role="dialog" aria-label="Photo">
+    <button type="button" class="small" id="photo-close">✕ Close</button>
+    <img id="photo-img" alt="Photo from the team chat">
+    <p class="hint" id="photo-note"></p>
+  </div>
 </div>
 
 <!-- Camera -->
@@ -878,6 +955,19 @@ function moveOutside(id, activity, place) {
     history: withHistory(prev, { action: `Moved outside: ${what}`, location: prev.location || "", status: prev.status, customer: prev.customer || "" }),
   }), `${fmtTank(id)} is outside the yard: ${what}. Its space at ${prev.location || "its slot"} is free.`);
 }
+// Inbound tank that goes straight outside the yard (e.g. to the wash bay) without being parked in a slot first.
+function gateInOutside(id, status, note, customer, activity, place) {
+  const prev = tanks.get(id);
+  if (prev && prev.inYard) return false;
+  const now = new Date().toISOString();
+  const what = activity + (place ? ` · ${place}` : "");
+  return writeTank(id, {
+    tank: id, location: null, status, inYard: true, note: note || "", customer: customer || "",
+    outside: true, activity, place: place || "", outsideSince: now,
+    dateIn: now, statusSince: now, updatedAt: now, updatedBy: me.email, gatedOutAt: null, lastLocation: "",
+    history: withHistory(prev, { action: `Gated in, straight outside: ${what}`, location: "", status, customer: customer || "" }),
+  }, `${fmtTank(id)} gated in as ${STATUS[status]} and is outside the yard: ${what}.`);
+}
 function changeActivity(id, activity) {
   const prev = tanks.get(id);
   if (!prev || !prev.outside) return false;
@@ -1064,25 +1154,34 @@ function arm(key) {
 
 function lookup(raw, source) {
   const code = parseScan(raw);
+  // With the pop-up closed, a problem shows in the Scan box (it opens if needed).
+  const fail = text => {
+    // Opened after the current tap finishes, so the "tap outside closes it" rule doesn't close it again.
+    if ($("sheet").hidden) { setMsg($("scan-pop-msg"), text, "bad"); setTimeout(() => setScanPop(true), 0); }
+    else setMsg(msgEl, text, "bad");
+    return false;
+  };
+  setMsg($("scan-pop-msg"), "");
   if (code) {
     if (!SLOTS[code]) {
       const zn = ZONES[Number(code.slice(1))];
-      setMsg(msgEl, `${code} is not on the yard map. ` + (zn ? `Zone ${zn.zone} runs from A${zn.zone} to ${zn.slots[zn.slots.length - 1].code}.` : "Zones run from 1 to 15."), "bad");
-      return;
+      return fail(`${code} is not on the yard map. ` + (zn ? `Zone ${zn.zone} runs from A${zn.zone} to ${zn.slots[zn.slots.length - 1].code}.` : "Zones run from 1 to 15."));
     }
     setMsg(msgEl, "");
     view = { type: "slot", code };
   } else {
     const id = normTank(raw);
-    if (id.length < 4) { setMsg(msgEl, `"${String(raw).slice(0, 40)}" is not a slot or tank number. Slots look like A1 or P15.`, "bad"); return; }
-    if (!tanks.has(id)) { setMsg(msgEl, `${fmtTank(id)} isn't in the register yet. Tap the slot it's parked in on the yard map, then add it there.`, "bad"); return; }
+    if (id.length < 4) return fail(`"${String(raw).slice(0, 40)}" is not a slot or tank number. Slots look like A1 or P15.`);
+    if (!tanks.has(id)) return fail(`${fmtTank(id)} isn't in the register yet. Tap the slot it's parked in on the yard map and add it there, or use Outside yard for a tank going straight outside.`);
     setMsg(msgEl, "");
     view = { type: "tank", id };
   }
   renderView();
   const hit = yardEl.querySelector(".slot.hit");
   if (hit) hit.scrollIntoView({ block: "nearest", inline: "center" });
+  setScanPop(false);
   openSheet();
+  return true;
 }
 
 function statusButtons(t) {
@@ -1164,6 +1263,7 @@ function renderSlotView(s) {
         : "This slot is full. Move or gate out a tank to make space" + (cap < MAX_SPACES ? (amAdmin() ? ", or open a closed space below." : ", or ask an admin for more space below.") : ".")}</p>` : ""}
     </div>`;
   addForm.hidden = here.length >= cap;
+  $("add-out-fields").hidden = true;
   $("add-title").textContent = `Park a tank at ${s.code} · ${cap - here.length} of ${cap} spaces free`;
   $("add-btn").textContent = `Save tank to ${s.code}`;
   updateAddWarn();
@@ -1178,7 +1278,7 @@ function renderTankView(t) {
     <dl class="facts">
       ${out ? `<dt>Where</dt><dd><button type="button" class="linkish" data-act="outside">Outside yard</button>${t.place ? " · " + esc(t.place) : ""}</dd>
       <dt>Remarks</dt><dd>${esc(activityText(t))} since ${when(t.outsideSince)}</dd>
-      <dt>Came from</dt><dd>${esc(t.lastLocation || "Unknown")}</dd>` : `
+      <dt>Came from</dt><dd>${esc(t.lastLocation || (t.lastLocation === "" ? "Gate (came in straight outside)" : "Unknown"))}</dd>` : `
       <dt>${t.inYard ? "Slot" : "Last slot"}</dt>
       <dd>${t.inYard ? `<button type="button" class="linkish" data-act="slot" data-code="${esc(t.location)}">${esc(t.location)}</button> · Zone ${SLOTS[t.location] ? SLOTS[t.location].zone : "?"}` : esc(t.lastLocation || "Unknown")}</dd>`}
       ${t.inYard ? `<dt>Status</dt><dd>${esc(STATUS[t.status])} since ${when(t.statusSince)}</dd>` : `<dt>Gated out</dt><dd>${when(t.gatedOutAt)} as ${esc(STATUS[t.status] || "")}</dd>`}
@@ -1262,14 +1362,18 @@ function renderOutsideView() {
         <button type="button" class="small primary" data-act="mv" data-id="${esc(t.tank)}">Return to yard</button>
         <button type="button" class="small" data-act="pick" data-id="${esc(t.tank)}">Pick on map</button>${gateButton(t)}
       </div>
-    </div>`).join("") : `<p class="empty-note">${all.length ? "No tanks with these remarks." : "No tanks are outside the yard. Open a tank's card and tap Move outside yard."}</p>`}</div>`;
-  addForm.hidden = true;
+    </div>`).join("") : `<p class="empty-note">${all.length ? "No tanks with these remarks." : "No tanks are outside the yard. Add an inbound tank above, or open a parked tank's card and tap Move outside yard."}</p>`}</div>`;
+  addForm.hidden = false;
+  $("add-out-fields").hidden = false;
+  $("add-title").textContent = "Inbound tank going straight outside the yard";
+  $("add-btn").textContent = "Save tank outside yard";
   $("space-box").innerHTML = "";
+  updateAddWarn();
 }
 // "Other" in the Where list shows a box to type the place.
 document.addEventListener("change", e => {
-  if (e.target.id !== "out-place-sel") return;
-  const other = $("out-place");
+  if (e.target.id !== "out-place-sel" && e.target.id !== "add-out-sel") return;
+  const other = $(e.target.id === "add-out-sel" ? "add-out-place" : "out-place");
   other.hidden = e.target.value !== "OTHER";
   if (!other.hidden) other.focus();
 });
@@ -1310,7 +1414,8 @@ function renderView() {
   renderMap();
 }
 
-const inYardMsg = (id, t) => `${fmtTank(id)} is already in the yard at ${t.location}${view.type === "slot" && t.location === view.code ? " (this slot)" : ""}. It can't be added twice: to move it, open ${t.location} and use Move.`;
+const inYardMsg = (id, t) => `${fmtTank(id)} is already in the yard at ${t.location}${view.type === "slot" && t.location === view.code ? " (this slot)" : ""}. It can't be added twice: to move it, open ${t.location} and use ${view.type === "outside" ? "Move outside yard" : "Move"}.`;
+const alreadyOutMsg = (id, t) => `${fmtTank(id)} is already outside the yard (${activityText(t)}${t.place ? " · " + t.place : ""}). It can't be added twice: update its remarks in the list below.`;
 function updateAddWarn() {
   const id = normTank(tankInput.value);
   const notes = [];
@@ -1319,7 +1424,8 @@ function updateAddWarn() {
     if (ok === false) notes.push(tanks.has(id) ? `Check digit doesn't match for ${fmtTank(id)}. Double-check the number.` : checkDigitMsg(id) + " It can't be saved.");
     if (ok === null) notes.push(`${11 - id.length} more character${11 - id.length === 1 ? "" : "s"} needed: tank numbers are 4 letters + 7 digits.`);
     const prev = tanks.get(id);
-    if (prev && prev.inYard && prev.outside && !prev.location && view.type === "slot") notes.push(`${fmtTank(id)} is outside the yard (${activityText(prev)}). Saving brings it back to ${view.code}.`);
+    if (prev && prev.inYard && prev.outside && !prev.location && view.type === "outside") notes.push(alreadyOutMsg(id, prev));
+    else if (prev && prev.inYard && prev.outside && !prev.location && view.type === "slot") notes.push(`${fmtTank(id)} is outside the yard (${activityText(prev)}). Saving brings it back to ${view.code}.`);
     else if (prev && prev.inYard && prev.location) notes.push(inYardMsg(id, prev));
     if (prev && !prev.inYard) notes.push(`${fmtTank(id)} was gated out ${ago(prev.gatedOutAt)}. Saving gates it back in.`);
   }
@@ -1344,7 +1450,7 @@ tankInput.addEventListener("input", () => { tidyTankBox(tankInput); updateAddWar
 
 addForm.addEventListener("submit", e => {
   e.preventDefault();
-  if (view.type !== "slot") return;
+  if (view.type !== "slot" && view.type !== "outside") return;
   const id = normTank(tankInput.value);
   if (!id) { setMsg(msgEl, "Enter the tank number first.", "bad"); tankInput.focus(); return; }
   if (!TANK_RE.test(id)) { setMsg(msgEl, tankFormatMsg(id), "bad"); tankInput.focus(); return; }
@@ -1354,6 +1460,20 @@ addForm.addEventListener("submit", e => {
   // No duplicates: a tank already parked in the yard isn't parked again here (use Move on its card instead).
   if (prev && prev.inYard && prev.location) { setMsg(msgEl, inYardMsg(id, prev), "bad"); tankInput.focus(); return; }
   const status = addForm.querySelector('input[name="add-status"]:checked').value;
+  if (view.type === "outside") {
+    if (prev && prev.inYard) { setMsg(msgEl, alreadyOutMsg(id, prev), "bad"); tankInput.focus(); return; }
+    const rem = $("add-out-rem"), sel = $("add-out-sel"), other = $("add-out-place");
+    if (!rem.value.trim()) { setMsg(msgEl, "Type the remarks first: what is being done to the tank outside the yard. Remarks are required.", "bad"); rem.classList.add("need"); rem.focus(); return; }
+    if (!sel.value) { setMsg(msgEl, "Choose where the tank is going: Workshop, Wash bay, Heating bay or Other.", "bad"); sel.classList.add("need"); sel.focus(); return; }
+    if (sel.value === "OTHER" && !other.value.trim()) { setMsg(msgEl, "You picked Other: type the place.", "bad"); other.classList.add("need"); other.focus(); return; }
+    const place = sel.value === "OTHER" ? other.value.trim().toUpperCase() : sel.value;
+    if (gateInOutside(id, status, noteInput.value.trim().toUpperCase(), customerInput.value.trim().toUpperCase(), rem.value.trim().toUpperCase(), place)) {
+      tankInput.value = ""; noteInput.value = ""; customerInput.value = ""; rem.value = ""; sel.value = ""; other.value = ""; other.hidden = true;
+      [rem, sel, other].forEach(el => el.classList.remove("need"));
+      updateAddWarn(); renderData();
+    }
+    return;
+  }
   const note = noteInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.note : "");
   const customer = customerInput.value.trim().toUpperCase() || (prev && prev.inYard ? prev.customer || "" : "");
   if (parkTank(id, view.code, status, note, customer)) { tankInput.value = ""; noteInput.value = ""; customerInput.value = ""; updateAddWarn(); renderData(); }
@@ -1479,8 +1599,7 @@ $("scan-form").addEventListener("submit", e => {
   e.preventDefault();
   const v = $("scan-input").value;
   if (!v.trim()) return;
-  lookup(v, "typed");
-  $("scan-input").value = "";
+  if (lookup(v, "typed")) $("scan-input").value = "";
 });
 
 // ---------- Live camera scanner ----------
@@ -1726,8 +1845,18 @@ $("ocr-ok").addEventListener("click", () => {
   openSheet();
 });
 
-$("cam-btn").addEventListener("click", () => openTankCamera("lookup"));
-$("fab").addEventListener("click", () => openTankCamera("lookup"));
+$("cam-btn").addEventListener("click", () => { setScanPop(false); openTankCamera("lookup"); });
+// The red Scan button opens a small box: camera scan, or type a slot / tank number.
+function setScanPop(open) {
+  $("scan-pop").hidden = !open; $("fab").setAttribute("aria-expanded", String(open));
+  // On a computer the cursor goes straight into the box; on phones the keyboard waits until the box is tapped.
+  if (open && matchMedia("(pointer: fine)").matches) $("scan-input").focus();
+}
+$("fab").addEventListener("click", () => setScanPop($("scan-pop").hidden));
+document.addEventListener("click", e => {
+  if (!$("scan-pop").hidden && !e.target.closest("#scan-pop, #fab")) setScanPop(false);
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("scan-pop").hidden) setScanPop(false); });
 $("tank-cam").addEventListener("click", () => openTankCamera("tank"));
 $("cam-type").addEventListener("click", () => { closeCamera(); showTankConfirm([]); });
 $("cam-close").addEventListener("click", closeCamera);
@@ -1735,7 +1864,10 @@ $("cam-close").addEventListener("click", closeCamera);
 window.onAndroidBack = () => {
   if (!ocrConfirm.hidden) { closeTankConfirm(); return true; }
   if (!camera.hidden) { closeCamera(); return true; }
+  if (!$("photo-view").hidden) { closePhoto(); return true; }
+  if (!$("scan-pop").hidden) { setScanPop(false); return true; }
   if (!sheetEl.hidden) { closeSheet(); return true; }
+  if (!$("chat").hidden) { closeChat(); return true; }
   if (pickFor) { stopPick(); return true; }
   return false;
 };
@@ -2039,6 +2171,8 @@ function stopApp() {
   if (usersUnsub) { usersUnsub(); usersUnsub = null; }
   if (slotsUnsub) { slotsUnsub(); slotsUnsub = null; }
   if (reqsUnsub) { reqsUnsub(); reqsUnsub = null; }
+  if (chatUnsub) { chatUnsub(); chatUnsub = null; }
+  chatMsgs = []; closeChat(); renderChat();
   tanks = new Map(); accounts = []; slotCfg = new Map(); slotReqs = new Map();
 }
 // Open spaces and requests. Only slots an admin has changed have a record, so these stay small.
@@ -2054,6 +2188,155 @@ function watchSlots() {
     renderData();
   }, () => { slotReqs = new Map(); renderData(); });
 }
+// ---------- Team chat ----------
+// Messages live in "chat" (text, by, name, at). Only the newest 60 are loaded, so reads stay low.
+// If the database rules are older than this feature, reading fails and the panel says so.
+let chatUnsub = null, chatMsgs = [], chatState = "loading";
+const CHAT_SEEN = "rsatChatSeen";
+const chatSeen = () => { try { return localStorage.getItem(CHAT_SEEN) || ""; } catch (e) { return ""; } };
+function markChatSeen() {
+  const last = chatMsgs.length ? chatMsgs[chatMsgs.length - 1].at : "";
+  try { if (last) localStorage.setItem(CHAT_SEEN, last); } catch (e) {}
+  updateChatBadge();
+}
+function updateChatBadge() {
+  const seen = chatSeen(), mine = me ? emailKey(me.email) : "";
+  // First time on this device: don't count the old messages as new.
+  const n = seen ? chatMsgs.filter(m => m.at > seen && m.by !== mine).length : 0;
+  $("chat-badge").hidden = !n || !$("chat").hidden;
+  $("chat-badge").textContent = n > 9 ? "9+" : n;
+}
+function watchChat() {
+  chatState = "loading"; renderChat();
+  chatUnsub = fdb.collection("chat").orderBy("at", "desc").limit(60).onSnapshot(snap => {
+    chatMsgs = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).reverse();
+    chatState = "ok";
+    if (!chatSeen() || !$("chat").hidden) markChatSeen();
+    renderChat(); updateChatBadge();
+  }, () => { chatMsgs = []; chatState = "off"; renderChat(); });
+}
+function renderChat() {
+  const list = $("chat-list");
+  if (chatState === "off") { list.innerHTML = `<p class="empty-note">Chat isn't switched on yet. An admin needs to publish the latest database rules in Firebase.</p>`; return; }
+  if (!chatMsgs.length) { list.innerHTML = `<p class="empty-note">${chatState === "loading" ? "Loading messages…" : "No messages yet. Say hello to the team."}</p>`; return; }
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  const mine = me ? emailKey(me.email) : "";
+  let day = "";
+  list.innerHTML = chatMsgs.map(m => {
+    const d = new Date(m.at).toDateString();
+    const sep = d !== day ? `<div class="chat-day">${esc(d === new Date().toDateString() ? "Today" : new Date(m.at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}</div>` : "";
+    day = d;
+    const canDel = m.by === mine || amAdmin();
+    return `${sep}<div class="chat-msg${m.by === mine ? " mine" : ""}">
+      <div class="who"><b>${esc(m.name || person(m.by))}</b><span title="${esc(fullDate(m.at))}">${esc(new Date(m.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))}</span>${
+        canDel ? `<button type="button" class="del" data-chat-del="${esc(m.id)}" aria-label="Delete message">Delete</button>` : ""}</div>
+      ${m.thumb ? `<button type="button" class="thumb" data-photo="${esc(m.photo || "")}" aria-label="Open photo"><img src="${esc(m.thumb)}" alt="Photo from ${esc(m.name || person(m.by))}"></button>` : ""}
+      ${m.text ? `<div class="txt">${esc(m.text)}</div>` : ""}</div>`;
+  }).join("");
+  if (atBottom || list.dataset.first !== "1") { list.scrollTop = list.scrollHeight; list.dataset.first = "1"; }
+}
+function openChat() {
+  $("chat").hidden = false; $("chat-fab").setAttribute("aria-expanded", "true");
+  $("chat-list").scrollTop = $("chat-list").scrollHeight;
+  markChatSeen(); $("chat-input").focus();
+}
+function closeChat() { $("chat").hidden = true; $("chat-fab").setAttribute("aria-expanded", "false"); updateChatBadge(); }
+$("chat-fab").addEventListener("click", () => $("chat").hidden ? openChat() : closeChat());
+$("chat-close").addEventListener("click", closeChat);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("chat").hidden) closeChat(); });
+$("chat-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const box = $("chat-input"), text = box.value.trim().slice(0, 500);
+  if (!text || !fdb || !me) return;
+  const at = new Date().toISOString();
+  const id = at.replace(/\D/g, "") + "-" + Math.random().toString(36).slice(2, 8);
+  box.value = "";
+  fdb.collection("chat").doc(id).set({ text, by: emailKey(me.email), name: (profile && profile.name) || person(me.email), at })
+    .catch(err => {
+      box.value = text;
+      setMsg($("banner"), err && err.code === "permission-denied"
+        ? "The message wasn't sent. An admin needs to publish the latest database rules in Firebase."
+        : "The message wasn't sent. Check your connection and try again.", "bad");
+    });
+  $("chat-list").dataset.first = "0";
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-chat-del]");
+  if (!b) return;
+  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; }
+  const m = chatMsgs.find(x => x.id === b.dataset.chatDel);
+  const batch = fdb.batch();
+  batch.delete(fdb.collection("chat").doc(b.dataset.chatDel));
+  if (m && m.photo) batch.delete(fdb.collection("chatPhotos").doc(m.photo));
+  batch.commit().catch(() => setMsg($("banner"), "That message couldn't be deleted.", "bad"));
+});
+
+// ---------- Photos in the chat ----------
+// Photos are shrunk on the phone before sending: a small preview goes in the message, and the bigger
+// copy (about 100-150 KB) in "chatPhotos", loaded only when someone taps the preview.
+function shrinkImage(file, maxSide, quality) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("not an image")); };
+    img.src = url;
+  });
+}
+async function sendPhoto(file) {
+  if (!file || !fdb || !me) return;
+  const btn = document.querySelector(".chat-photo-btn");
+  btn.classList.add("busy");
+  try {
+    let full = await shrinkImage(file, 1024, 0.6);
+    if (full.length > 700000) full = await shrinkImage(file, 960, 0.6);
+    if (full.length > 700000) full = await shrinkImage(file, 720, 0.5);
+    let thumb = await shrinkImage(file, 320, 0.6);
+    if (thumb.length > 70000) thumb = await shrinkImage(file, 200, 0.5);
+    const at = new Date().toISOString();
+    const id = at.replace(/\D/g, "") + "-" + Math.random().toString(36).slice(2, 8);
+    const by = emailKey(me.email);
+    const text = $("chat-input").value.trim().slice(0, 500);
+    const batch = fdb.batch();
+    batch.set(fdb.collection("chatPhotos").doc(id), { data: full, by, at });
+    batch.set(fdb.collection("chat").doc(id), { text, by, name: (profile && profile.name) || person(me.email), at, thumb, photo: id });
+    $("chat-input").value = "";
+    $("chat-list").dataset.first = "0";
+    await batch.commit();
+  } catch (err) {
+    setMsg($("banner"), err && err.code === "permission-denied"
+      ? "The photo wasn't sent. An admin needs to publish the latest database rules in Firebase."
+      : err && err.message === "not an image" ? "That file isn't a photo the app can read. Try a JPG or PNG."
+      : "The photo wasn't sent. Check your connection and try again.", "bad");
+  } finally {
+    btn.classList.remove("busy");
+  }
+}
+$("chat-file").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; sendPhoto(f); });
+function closePhoto() { $("photo-view").hidden = true; $("photo-img").removeAttribute("src"); }
+$("photo-close").addEventListener("click", closePhoto);
+$("photo-view").addEventListener("click", e => { if (e.target.id === "photo-view") closePhoto(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("photo-view").hidden) closePhoto(); });
+document.addEventListener("click", async e => {
+  const b = e.target.closest(".thumb[data-photo]");
+  if (!b) return;
+  const small = b.querySelector("img").src;
+  $("photo-img").src = small; $("photo-note").textContent = "Loading the full photo…"; $("photo-view").hidden = false;
+  if (!b.dataset.photo) { $("photo-note").textContent = ""; return; }
+  try {
+    const d = await fdb.collection("chatPhotos").doc(b.dataset.photo).get();
+    if ($("photo-view").hidden) return;
+    if (d.exists) { $("photo-img").src = d.data().data; $("photo-note").textContent = ""; }
+    else $("photo-note").textContent = "The full photo was deleted. This is the small preview.";
+  } catch (err) { $("photo-note").textContent = "Couldn't load the full photo. Showing the small preview."; }
+});
 function startApp(u) {
   show("app");
   $("me-name").textContent = profile.name || person(u.email);
@@ -2071,6 +2354,7 @@ function startApp(u) {
     setSync(); renderData();
   });
   watchSlots();
+  watchChat();
   checkForUpdate();
 }
 async function onProfile(u, snap) {

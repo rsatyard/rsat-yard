@@ -59,6 +59,30 @@ service cloud.firestore {
       allow delete: if isAdmin() || (active() && resource.data.by == myEmail());
     }
 
+    // Team chat. Everyone approved reads and posts as themselves; messages can't be edited.
+    // People delete their own messages; admins delete any.
+    // A message has text, a photo, or both. With a photo it holds a small preview (thumb) and the id of the bigger copy.
+    match /chat/{id} {
+      allow read: if active();
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['text', 'by', 'name', 'at', 'thumb', 'photo'])
+        && request.resource.data.by == myEmail()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 500
+        && (request.resource.data.text.size() > 0 || 'thumb' in request.resource.data)
+        && (!('thumb' in request.resource.data) || (request.resource.data.thumb is string && request.resource.data.thumb.size() <= 80000));
+      allow delete: if isAdmin() || (active() && resource.data.by == myEmail());
+    }
+
+    // The bigger copy of a chat photo (shrunk on the phone first, well under the 1 MB record limit).
+    match /chatPhotos/{id} {
+      allow read: if active();
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['data', 'by', 'at'])
+        && request.resource.data.by == myEmail()
+        && request.resource.data.data is string && request.resource.data.data.size() <= 900000;
+      allow delete: if isAdmin() || (active() && resource.data.by == myEmail());
+    }
+
     // Oldest phone-app build allowed (set by admins under Accounts).
     match /config/app {
       allow get: if signedIn();
