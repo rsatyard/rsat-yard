@@ -83,6 +83,16 @@ service cloud.firestore {
       allow delete: if isAdmin() || (active() && resource.data.by == myEmail());
     }
 
+    // "Forgot password" requests (id = email). Anyone may ask, even signed out, but nobody can read the list
+    // except admins. An admin approves by sending the reset email from Accounts, which also clears the request.
+    match /resetRequests/{email} {
+      allow get, list, delete: if isAdmin();
+      allow create, update: if request.resource.data.keys().hasOnly(['email', 'at'])
+        && request.resource.data.email == email
+        && email is string && email.size() <= 100 && email.matches('[^@ ]+@[^@ ]+[.][^@ ]+')
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40;
+    }
+
     // Oldest phone-app build allowed (set by admins under Accounts).
     match /config/app {
       allow get: if signedIn();

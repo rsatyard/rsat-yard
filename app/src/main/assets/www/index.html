@@ -489,8 +489,8 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
     </form>
     <form id="reset-form" autocomplete="on" hidden>
       <label>Email <input id="rs-email" type="email" autocomplete="username" required></label>
-      <button class="primary" type="submit" id="rs-btn">Send reset link</button>
-      <p class="hint">We'll email you a link to choose a new password. Check your spam folder if it doesn't arrive.</p>
+      <button class="primary" type="submit" id="rs-btn">Ask an admin to reset my password</button>
+      <p class="hint">An admin has to approve the reset first. Once they do, you'll get an email with a link to choose a new password. Check your spam folder if it doesn't arrive.</p>
       <div class="links"><button type="button" class="linkish" data-mode="login">Back to sign in</button></div>
     </form>
     <p id="login-msg" class="msg bad" hidden></p>
@@ -658,6 +658,11 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       </form>
       <p class="hint">With a password, the account is ready to sign in. Without one, the person taps <b>Create account</b> with this email and gets in straight away.</p>
       <p id="acc-msg" class="msg" hidden style="margin-top:10px"></p>
+      <div id="rr-box" hidden style="margin-top:14px">
+        <h3>Password reset requests</h3>
+        <p class="hint">Someone tapped <b>Forgot password</b>. Approve to email them a link to choose a new password; decline if you didn't expect it.</p>
+        <div class="table-scroll"><table id="rr-table"></table></div>
+      </div>
       <div class="table-scroll"><table id="acc-table"></table></div>
 
       <h3 style="margin-top:18px">Oldest app version allowed</h3>
@@ -2273,7 +2278,7 @@ function loginMode(mode) {
   $("signup-form").hidden = mode !== "signup";
   $("reset-form").hidden = mode !== "reset";
   $("login-intro").textContent = mode === "signup" ? "Create an account for the RSAT yard app."
-    : mode === "reset" ? "Forgot your password? Enter your email and we'll send you a link to choose a new one."
+    : mode === "reset" ? "Forgot your password? Enter your email to ask an admin for a reset."
     : "Tank tracking for the RSAT yard. Sign in with your account.";
   setMsg($("login-msg"), "");
 }
@@ -2629,11 +2634,28 @@ function setAdmin(on) {
     }, () => setMsg(accMsg, "Couldn't load the accounts. Sign out and back in.", "bad"));
     fdb.collection("config").doc("owner").get().then(d => { ownerEmail = d.exists ? d.data().email : ""; renderAccounts(); }).catch(() => {});
     showLatestVersion();
+    rrUnsub = fdb.collection("resetRequests").onSnapshot(snap => {
+      resetReqs = snap.docs.map(d => d.data()).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+      renderAccounts();
+    }, () => { resetReqs = []; renderAccounts(); });   // rules not published yet: no requests to show
   }
   if (!on && usersUnsub) { usersUnsub(); usersUnsub = null; }
+  if (!on && rrUnsub) { rrUnsub(); rrUnsub = null; resetReqs = []; }
+}
+// Password reset requests waiting for an admin (collection "resetRequests", id = email).
+let resetReqs = [], rrUnsub = null;
+function renderResetReqs() {
+  $("rr-box").hidden = !resetReqs.length;
+  $("rr-table").innerHTML = `<thead><tr><th>Name</th><th>Email</th><th>Asked</th><th></th></tr></thead><tbody>${resetReqs.map(r => {
+    const e = esc(r.email), a = accounts.find(x => x.email === r.email);
+    const when = r.at ? new Date(r.at).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    const who = a ? esc(a.name || "") + (a.status !== "active" ? ` <span class="hint">(${esc(ACC_STATUS[a.status] || a.status)})</span>` : "") : `<span class="hint">Not in the account list</span>`;
+    return `<tr><td>${who}</td><td>${e}</td><td>${esc(when)}</td><td><div class="acc-actions"><button type="button" class="small primary" data-rr="ok" data-email="${e}">Approve and send link</button><button type="button" class="small danger" data-rr="no" data-email="${e}">Decline</button></div></td></tr>`;
+  }).join("")}</tbody>`;
 }
 function renderAccounts() {
-  const pending = accounts.filter(a => a.status === "pending").length;
+  renderResetReqs();
+  const pending = accounts.filter(a => a.status === "pending").length + resetReqs.length;
   $("acc-badge").hidden = !pending;
   $("acc-badge").textContent = pending;
   const order = { pending: 0, active: 1, disabled: 2 };
@@ -2769,12 +2791,16 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
   });
   $("reset-form").addEventListener("submit", e => {
     e.preventDefault();
-    const email = $("rs-email").value.trim();
+    // Password resets need an admin's approval: this only files a request; the admin sends the email from Accounts.
+    const email = emailKey($("rs-email").value);
     busy($("rs-btn"), async () => {
-      try { await auth.sendPasswordResetEmail(email); }
-      catch (err) { if (!String(err.code).includes("user-not-found")) throw err; }
-      // Same answer either way, so the form doesn't reveal who has an account.
-      setMsg($("login-msg"), `If ${email} has an account, a reset link is on its way. Open it, choose a new password, then sign in here. Check your spam folder if it doesn't arrive.`, "ok");
+      try {
+        await fdb.collection("resetRequests").doc(email).set({ email, at: new Date().toISOString() });
+      } catch (err) {
+        setMsg($("login-msg"), "Your request couldn't be sent. Check your connection, or ask your admin directly to reset your password.", "bad");
+        return;
+      }
+      setMsg($("login-msg"), `Your request has gone to an admin. When they approve it, a reset link will be emailed to ${email}. Open it, choose a new password, then sign in here. Check your spam folder if it doesn't arrive.`, "ok");
     });
   });
   $("logout-btn").addEventListener("click", () => auth.signOut());
@@ -2828,6 +2854,27 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
         ? "Firebase blocks new logins, so nobody can be added or sign up. In the Firebase console, open Authentication > Settings > User actions, tick Enable create (sign-up) and click Save, then try again."
         : c.startsWith("auth/") ? authError(err) : "The account couldn't be added. Check your connection and try again.", "bad");
     } finally { btn.disabled = false; }
+  });
+  $("rr-table").addEventListener("click", async e => {
+    const b = e.target.closest("[data-rr]");
+    if (!b) return;
+    const email = b.dataset.email, done = () => fdb.collection("resetRequests").doc(email).delete();
+    b.disabled = true;
+    try {
+      if (b.dataset.rr === "no") { await done(); setMsg(accMsg, `Declined the password reset for ${email}. No email was sent.`, "info"); return; }
+      try { await auth.sendPasswordResetEmail(email); }
+      catch (err) {
+        if (!String(err.code).includes("user-not-found")) throw err;
+        await done();
+        setMsg(accMsg, `${email} has no login, so there's nothing to reset. The request was removed.`, "bad");
+        return;
+      }
+      await done();
+      setMsg(accMsg, `Approved. A password reset link was emailed to ${email}.`, "info");
+    } catch (err) {
+      b.disabled = false;
+      setMsg(accMsg, String(err.code || "").startsWith("auth/") ? authError(err) : "That didn't work. Check your connection and try again.", "bad");
+    }
   });
   $("acc-table").addEventListener("change", e => {
     const email = e.target.dataset.accRole;
