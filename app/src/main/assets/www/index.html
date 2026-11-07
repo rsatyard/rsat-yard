@@ -766,18 +766,17 @@ const GROUP_COLS = [
   ["T", "U", "V", "W", "X"], ["Z", "AA", "AB", "AC", "AD"],
 ];
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXY";
-// Zones 6–10 (top section) are numbered across the rows, snaking: row 1 A–E left to right, row 2 F–J right to
-// left, row 3 K–O left to right, row 4 P–T right to left, row 5 U–Y left to right.
-// Zones 1–5 (middle section) are the upside-down mirror: the bottom row is A–E left to right, the row above F–J
-// right to left, then K–O, P–T, and the top row (next to the zone name) U–Y left to right.
-// Zones 11–15 (bottom section, 3 rows) snake like zones 6–10: A–E left to right, J–F, then K–O.
-// Until layout 2 (Nov 2026) every zone ran down the columns: OLD_CODES maps those old codes to the new ones,
-// and renumberSlots() converts saved records once.
-const LAYOUT_V = 2;
+// Layout 3 (Nov 2026): every zone is numbered along the columns: first column A–E, second F–J, then K–O,
+// P–T, U–Y (zones 11–15 have 3 rows: A–C, D–F, G–I, J–L, M–O). Zones 6–15 run top to bottom; zones 1–5
+// (middle section) run bottom to top, so A1 is the bottom-left slot of zone 1.
+// Layout 2 (early Nov 2026) numbered across the rows in a snake. OLD_CODES maps those layout-2 codes to the
+// layout-3 codes for the same place, and renumberSlots() renames saved records once. Tanks stay where they are;
+// only the slot names change.
+const LAYOUT_V = 3;
 const snakeIdx = (c, r, cols) => r * cols + (r % 2 ? cols - 1 - c : c);
-const SNAKE = { Top: (c, r, n) => snakeIdx(c, r, n), Middle: (c, r, n, rows) => snakeIdx(c, rows - 1 - r, n),
+const SNAKE2 = { Top: (c, r, n) => snakeIdx(c, r, n), Middle: (c, r, n, rows) => snakeIdx(c, rows - 1 - r, n),
   Bottom: (c, r, n) => snakeIdx(c, r, n) };
-const OLD_CODES = {};
+const OLD_CODES = {}, OLD1_CODES = {};
 const SLOTS = {}, ZONES = {}, SLOT_ORDER = [];
 BLOCKS.forEach(b => b.zones.forEach((z, gi) => {
   const cols = GROUP_COLS[gi];
@@ -785,9 +784,12 @@ BLOCKS.forEach(b => b.zones.forEach((z, gi) => {
   ZONES[z] = zone;
   cols.forEach((col, c) => {
     for (let r = 0; r < b.rows; r++) {
-      const snake = SNAKE[b.section];
-      const idx = snake ? snake(c, r, cols.length, b.rows) : c * b.rows + r;
-      if (snake) OLD_CODES[LETTERS[c * b.rows + r] + z] = LETTERS[idx] + z;
+      // Middle section (zones 1–5) runs up each column instead: A at the bottom, E at the top.
+      const idx = c * b.rows + (b.section === "Middle" ? b.rows - 1 - r : r);
+      const old = LETTERS[SNAKE2[b.section](c, r, cols.length, b.rows)] + z;
+      if (old !== LETTERS[idx] + z) OLD_CODES[old] = LETTERS[idx] + z;
+      const old1 = LETTERS[c * b.rows + r] + z;   // layout 1: every zone top to bottom
+      if (old1 !== LETTERS[idx] + z) OLD1_CODES[old1] = LETTERS[idx] + z;
       const s = { code: LETTERS[idx] + z, zone: z, section: b.section, col: c + 1, row: r + 1, cols: cols.length, rows: b.rows, slot: idx + 1, total: cols.length * b.rows, cell: col + (b.firstRow + r) };
       SLOTS[s.code] = s;
       zone.slots.push(s);
@@ -803,9 +805,9 @@ const at = (z, col, row) => {
 };
 const STATUS = { loaded: "Loaded", empty_clean: "Empty clean", empty_dirty: "Empty dirty", gas_laden: "Gas tank laden", gas_empty: "Gas tank empty" };
 const CAPACITY = 5; // tanks per slot, except the smaller slots below
-// The smaller slots: the left column of zone 11 and the right column of zone 15 (before layout 2 these were
-// A11, B11, C11 and M15, N15, O15).
-const SMALL_SLOTS = { A11: 4, J11: 4, K11: 4, E15: 4, F15: 4, O15: 4 };
+// The smaller slots: the left column of zone 11 and the right column of zone 15 (in layout 2 these were
+// A11, J11, K11 and E15, F15, O15).
+const SMALL_SLOTS = { A11: 4, B11: 4, C11: 4, M15: 4, N15: 4, O15: 4 };
 // Open and closed spaces: every slot has room for MAX_SPACES tanks, but only its OPEN spaces can be used.
 // By default all spaces are open (the small slots above have 4 open and 1 closed). Admins open or close spaces
 // per slot (collection "slots", id = slot code, field open = number of open spaces). Staff only ever see the
@@ -2544,17 +2546,21 @@ function renumberSlots() {
   if (dataState !== "synced" || !slotsLoaded) return;
   const mark = slotCfg.get("_layout");
   if (mark && mark.open >= LAYOUT_V) return;
+  // Saved data is in layout-2 names if the layout-2 switch was done, otherwise in layout-1 names.
+  // Tanks saved by a layout-2 app always carry layout: 2.
+  const savedAs2 = !!mark && mark.open === 2;
   renumbering = true;
   const now = new Date().toISOString(), by = emailKey(me.email);
-  const nu = code => OLD_CODES[code] || code;
   const ops = [];
   tanks.forEach((t, id) => {
     if (t.layout >= LAYOUT_V) return;
+    const MAP = t.layout === 2 || savedAs2 ? OLD_CODES : OLD1_CODES;
+    const nu = code => MAP[code] || code;
     const upd = {};
-    if (t.location && OLD_CODES[t.location]) upd.location = nu(t.location);
-    if (t.lastLocation && OLD_CODES[t.lastLocation]) upd.lastLocation = nu(t.lastLocation);
-    if (Array.isArray(t.history) && t.history.some(h => h && OLD_CODES[h.location]))
-      upd.history = t.history.map(h => h && OLD_CODES[h.location] ? Object.assign({}, h, { location: nu(h.location) }) : h);
+    if (t.location && MAP[t.location]) upd.location = nu(t.location);
+    if (t.lastLocation && MAP[t.lastLocation]) upd.lastLocation = nu(t.lastLocation);
+    if (Array.isArray(t.history) && t.history.some(h => h && MAP[h.location]))
+      upd.history = t.history.map(h => h && MAP[h.location] ? Object.assign({}, h, { location: nu(h.location) }) : h);
     const from = t.location || t.lastLocation;
     if (upd.location && upd.location !== t.location || upd.lastLocation && upd.lastLocation !== t.lastLocation) {
       upd.history = [{ at: now, by, action: `Slot renumbered: ${from} is now ${nu(from)}`, location: nu(from), status: t.status, customer: t.customer || "" },
@@ -2566,11 +2572,12 @@ function renumberSlots() {
   });
   // Open spaces: move each renamed slot's setting to its new code (deleting old records nothing replaces).
   const moved = new Map();
-  slotCfg.forEach((c, code) => { if (OLD_CODES[code]) moved.set(nu(code), c.open); });
-  slotCfg.forEach((c, code) => { if (OLD_CODES[code] && !moved.has(code)) ops.push(b => b.delete(fdb.collection("slots").doc(code))); });
+  const SMAP = savedAs2 ? OLD_CODES : OLD1_CODES, nu = code => SMAP[code] || code;
+  slotCfg.forEach((c, code) => { if (SMAP[code]) moved.set(nu(code), c.open); });
+  slotCfg.forEach((c, code) => { if (SMAP[code] && !moved.has(code)) ops.push(b => b.delete(fdb.collection("slots").doc(code))); });
   moved.forEach((open, code) => ops.push(b => b.set(fdb.collection("slots").doc(code), { code, open, updatedAt: now, updatedBy: by })));
   // Space requests can't be re-filed for someone else, so requests for renamed slots are cleared.
-  slotReqs.forEach((r, code) => { if (OLD_CODES[code] && nu(code) !== code) ops.push(b => b.delete(fdb.collection("slotRequests").doc(code))); });
+  slotReqs.forEach((r, code) => { if (SMAP[code]) ops.push(b => b.delete(fdb.collection("slotRequests").doc(code))); });
   ops.push(b => b.set(fdb.collection("slots").doc("_layout"), { code: "_layout", open: LAYOUT_V, updatedAt: now, updatedBy: by }));
   {
     const n = Number(window.APP_BUILD) || 0;

@@ -65,7 +65,6 @@ The phone must be online for the first sign-in. After that the app opens and rec
 - Scan or type a **tank number** to find where it is.
 - Each slot holds up to **5 tanks** (A11, B11, C11, M15, N15 and O15 hold 4; change `SMALL_SLOTS` in `index.html` to adjust). Record the **customer** when parking a tank; edit it later from the tank's card.
 - **Export to Excel** (website or app): one row per tank visit with **Tank number, Customer, Status, Date in, Date out** by default. Filter by customer, status, date-in range, and in-yard / gated-out; switch on extra columns (days in yard, slot, zone, note, updated by) and an optional History sheet. Settings are remembered on each device. On the phone, exports open the share menu so you can save to Drive, email or WhatsApp.
-- **Print slot labels**: makes a PDF of QR + barcode labels, 10 per A4 page.
 
 ## Making changes later
 
