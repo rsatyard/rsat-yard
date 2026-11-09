@@ -618,6 +618,7 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       </div>
       <p id="reg-msg" class="msg" hidden></p>
       <div class="table-scroll"><table id="reg-table"></table></div>
+      <p id="reg-more" class="hint" hidden style="margin:10px 0 0"></p>
     </section>
 
     <section class="panel" aria-labelledby="export-title" id="export-panel">
@@ -1902,9 +1903,18 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !sheetEl.h
 // ---------- Register ----------
 let regTab = "in";
 const regTable = $("reg-table"), regSearch = $("reg-search"), regMsg = $("reg-msg");
-$("tab-in").addEventListener("click", () => { regTab = "in"; renderData(); });
-$("tab-out").addEventListener("click", () => { regTab = "out"; filter = null; renderData(); });
+$("tab-in").addEventListener("click", () => { regTab = "in"; regAll = false; renderData(); });
+$("tab-out").addEventListener("click", () => { regTab = "out"; regAll = false; filter = null; renderData(); });
 regSearch.addEventListener("input", () => renderRegister());
+// The register shows only the 5 most recently changed tanks; "Show all" lists everything. A search always shows every match.
+const REG_SHORT = 5;
+let regAll = false;
+const lastChange = t => (Array.isArray(t.history) && t.history[0] && t.history[0].at) || t.updatedAt || t.gatedOutAt || "";
+$("reg-more").addEventListener("click", e => {
+  if (!e.target.closest("[data-reg-more]")) return;
+  regAll = !regAll;
+  renderRegister();
+});
 
 function registerRows() {
   const q = regSearch.value.trim().toUpperCase();
@@ -1919,8 +1929,18 @@ function registerRows() {
 function renderRegister() {
   $("tab-in").setAttribute("aria-pressed", regTab === "in");
   $("tab-out").setAttribute("aria-pressed", regTab === "out");
+  $("reg-more").hidden = true;
   if (dataState === "connecting") { regTable.innerHTML = `<tbody><tr><td class="hint">Loading tank records…</td></tr></tbody>`; return; }
-  const rows = registerRows();
+  let rows = registerRows();
+  const total = rows.length;
+  if (!regAll && !regSearch.value.trim() && total > REG_SHORT) {
+    rows = rows.slice().sort((a, b) => String(lastChange(b)).localeCompare(String(lastChange(a)))).slice(0, REG_SHORT);
+    $("reg-more").innerHTML = `Showing the ${REG_SHORT} latest of ${total} tanks. <button type="button" class="small" data-reg-more style="margin-left:8px">Show all ${total}</button>`;
+    $("reg-more").hidden = false;
+  } else if (regAll && total > REG_SHORT && !regSearch.value.trim()) {
+    $("reg-more").innerHTML = `Showing all ${total} tanks. <button type="button" class="small" data-reg-more style="margin-left:8px">Show only the ${REG_SHORT} latest</button>`;
+    $("reg-more").hidden = false;
+  }
   if (!rows.length) {
     const none = tanks.size === 0 ? "No tanks recorded yet. Tap a slot on the map and add the tank parked there."
       : regTab === "in" ? "No tanks in the yard match." : "No gated-out tanks match.";
