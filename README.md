@@ -84,3 +84,4 @@ Edit the files and upload them to the GitHub repository again. Every upload rebu
 | `.github/workflows/build.yml` | Cloud build for the APK and website |
 
 Free-tier limits: Firebase's free Spark plan allows 50,000 reads and 20,000 writes per day, which is far more than a yard of 312 slots needs.
+Maintained by RSA.
