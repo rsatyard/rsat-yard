@@ -22,9 +22,8 @@ Setup takes about 30 minutes, once. You need two free accounts: **Firebase** (Go
 
 1. In the Firebase console, open **Build > Authentication > Get started**.
 2. Under **Sign-in method**, enable **Email/Password** and save.
-3. Under **Settings > User actions**, keep **Enable create (sign-up)** ticked. New logins can't see anything until an admin approves them in the app.
-4. Optional: to email the admin whenever someone asks for access, create a free EmailJS account and put its service ID, template ID and public key in `window.EMAILJS` in `firebase-config.js` (template fields `{{name}}`, `{{email}}`, `{{approve_link}}`; set its To Email to the admin's address). The email's Approve link opens the website and asks the admin to confirm.
-5. The first person to sign in to the app gets a **Set me up as the admin** button. After that, manage everyone in the app under **Accounts**: add people, approve requests, change roles, turn accounts off and send password resets.
+3. Under **Settings > User actions**, keep **Enable create (sign-up)** ticked. The app uses it when an admin adds a person; there is no sign-up button in the app, and a login without an account record set up by an admin sees nothing.
+4. The first person to sign in to the app gets a **Set me up as the admin** button. After that, only admins create accounts, under **Accounts**: they enter the person's name, email and role before the person ever signs in (with a password, or empty to email them a link to choose one). Admins also change roles, turn accounts off and approve password resets.
 
 ## Step 3: Create the tank database and lock it down
 

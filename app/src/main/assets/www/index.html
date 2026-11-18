@@ -476,16 +476,8 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       <label>Email <input id="login-email" type="email" autocomplete="username" required></label>
       <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit" id="login-btn">Sign in</button>
-      <div class="links"><button type="button" class="linkish" data-mode="reset">Forgot password?</button><button type="button" class="linkish" data-mode="signup">Create account</button></div>
-    </form>
-    <form id="signup-form" autocomplete="on" hidden>
-      <label>Your name <input id="su-name" type="text" autocomplete="name" required></label>
-      <label>Email <input id="su-email" type="email" autocomplete="username" required></label>
-      <label>Password (at least 6 characters) <input id="su-pass" type="password" autocomplete="new-password" minlength="6" required></label>
-      <label>Repeat password <input id="su-pass2" type="password" autocomplete="new-password" minlength="6" required></label>
-      <button class="primary" type="submit" id="su-btn">Create account</button>
-      <p class="hint">An admin approves new accounts before they can see the yard.</p>
-      <div class="links"><button type="button" class="linkish" data-mode="login">Back to sign in</button></div>
+      <div class="links"><button type="button" class="linkish" data-mode="reset">Forgot password?</button></div>
+      <p class="hint">No account? Accounts are created by an admin. Ask your admin to add you.</p>
     </form>
     <form id="reset-form" autocomplete="on" hidden>
       <label>Email <input id="rs-email" type="email" autocomplete="username" required></label>
@@ -653,11 +645,11 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       <form class="acc-add" id="acc-form" autocomplete="off">
         <label>Name <input id="acc-name" type="text" required></label>
         <label>Email <input id="acc-email" type="email" required></label>
-        <label>Password (optional) <input id="acc-pass" type="text" minlength="6" placeholder="Leave empty: they create it"></label>
+        <label>Password (optional) <input id="acc-pass" type="text" minlength="6" placeholder="Leave empty: we email them a link"></label>
         <label>Role <select id="acc-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></label>
         <button class="primary" type="submit" id="acc-add-btn">Add account</button>
       </form>
-      <p class="hint">With a password, the account is ready to sign in. Without one, the person taps <b>Create account</b> with this email and gets in straight away.</p>
+      <p class="hint">Only admins create accounts; nobody can sign up by themselves. With a password, the account is ready to sign in. Without one, the person gets an email with a link to choose their own password.</p>
       <p id="acc-msg" class="msg" hidden style="margin-top:10px"></p>
       <div id="rr-box" hidden style="margin-top:14px">
         <h3>Password reset requests</h3>
@@ -2296,13 +2288,11 @@ function waitScreen(title, text, claim) {
   show("wait-screen");
 }
 function loginMode(mode) {
-  const typed = $("login-email").value || $("su-email").value || $("rs-email").value;
-  ["login-email", "su-email", "rs-email"].forEach(id => { if (!$(id).value) $(id).value = typed; });
+  const typed = $("login-email").value || $("rs-email").value;
+  ["login-email", "rs-email"].forEach(id => { if (!$(id).value) $(id).value = typed; });
   $("login-form").hidden = mode !== "login";
-  $("signup-form").hidden = mode !== "signup";
   $("reset-form").hidden = mode !== "reset";
-  $("login-intro").textContent = mode === "signup" ? "Create an account for the RSAT yard app."
-    : mode === "reset" ? "Forgot your password? Enter your email to ask an admin for a reset."
+  $("login-intro").textContent = mode === "reset" ? "Forgot your password? Enter your email to ask an admin for a reset."
     : "Tank tracking for the RSAT yard. Sign in with your account.";
   setMsg($("login-msg"), "");
 }
@@ -2321,7 +2311,7 @@ function authError(err) {
 // ---------- Accounts ----------
 // Each login has a record in "users" (id = lower-case email): role admin | staff, status pending | active | disabled.
 // The database rules only let active accounts see tanks, and only admins manage accounts.
-let profile = null, profUnsub = null, usersUnsub = null, accounts = [], ownerEmail = "", signupName = "", askedFor = null;
+let profile = null, profUnsub = null, usersUnsub = null, accounts = [], ownerEmail = "", askedFor = null;
 const ROLE = { staff: "Staff", admin: "Admin" };
 const ACC_STATUS = { pending: "Waiting for approval", active: "Active", disabled: "Turned off" };
 const accMsg = $("acc-msg");
@@ -2535,12 +2525,8 @@ async function onProfile(u, snap) {
         waitScreen("First-time setup", `No admin is set up yet. If you manage this app, make ${u.email} the admin. You can then add and approve the other accounts.`, true);
         return;
       }
-      // Ask for access: the snapshot fires again with this pending record.
-      const name = signupName || u.displayName || person(u.email);
-      await fdb.collection("users").doc(emailKey(u.email)).set({
-        email: emailKey(u.email), name, role: "staff", status: "pending", createdAt: new Date().toISOString(),
-      });
-      notifyAdmin(name, emailKey(u.email), owner.data().email);
+      // Accounts are created by an admin before anyone signs in; a login without an account record gets nothing.
+      waitScreen("No access", `${u.email} hasn't been given access to the yard. Ask an admin to add you under Accounts, then sign in again.`, false);
     } catch (err) {
       if (me !== u || profile) return;
       waitScreen("Can't check your account", err.code === "permission-denied"
@@ -2553,7 +2539,7 @@ async function onProfile(u, snap) {
     if (profile && profile.status === "active") stopApp();
     profile = p;
     if (p.status === "disabled") waitScreen("Account turned off", "An admin has turned off this account. Ask your admin if you need access again.", false);
-    else waitScreen("Waiting for approval", `Thanks, ${p.name || person(u.email)}. ${emailOn() ? "We've emailed the admin your request." : "An admin needs to approve your account."} The app opens by itself as soon as they approve it.`, false);
+    else waitScreen("Waiting for approval", `${p.name || person(u.email)}, an admin needs to approve your account. The app opens by itself as soon as they do.`, false);
     return;
   }
   profile = p;
@@ -2700,20 +2686,6 @@ function renderAccounts() {
   }).join("")}</tbody>`;
   offerLinkApproval();
 }
-// Access-request emails go through EmailJS; its template sends them to the admin with an Approve link.
-const emailOn = () => { const ej = window.EMAILJS || {}; return !!(ej.serviceId && ej.templateId && ej.publicKey); };
-function notifyAdmin(name, email, adminEmail) {
-  if (!emailOn()) return;
-  const ej = window.EMAILJS;
-  fetch("https://api.emailjs.com/api/v1.0/email/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      service_id: ej.serviceId, template_id: ej.templateId, user_id: ej.publicKey,
-      template_params: { name, email, to_email: adminEmail || "", approve_link: (window.SITE_URL || location.href.split("#")[0]) + "#approve=" + encodeURIComponent(email) },
-    }),
-  }).catch(() => { /* the request still shows in Accounts */ });
-}
 // Opening the email's Approve link: #approve=<email>. Kept until an admin is signed in and the accounts have loaded.
 let linkApprove = (() => { const m = location.hash.match(/^#approve=(.+)$/); try { return m ? decodeURIComponent(m[1]).toLowerCase() : ""; } catch (e) { return ""; } })();
 function offerLinkApproval() {
@@ -2804,15 +2776,6 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     e.preventDefault();
     busy($("login-btn"), () => auth.signInWithEmailAndPassword($("login-email").value.trim(), $("login-pass").value));
   });
-  $("signup-form").addEventListener("submit", e => {
-    e.preventDefault();
-    if ($("su-pass").value !== $("su-pass2").value) { setMsg($("login-msg"), "The two passwords don't match.", "bad"); return; }
-    signupName = $("su-name").value.trim();
-    busy($("su-btn"), async () => {
-      const cred = await auth.createUserWithEmailAndPassword($("su-email").value.trim(), $("su-pass").value);
-      cred.user.updateProfile({ displayName: signupName }).catch(() => {});
-    });
-  });
   $("reset-form").addEventListener("submit", e => {
     e.preventDefault();
     // Password resets need an admin's approval: this only files a request; the admin sends the email from Accounts.
@@ -2860,14 +2823,19 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     btn.disabled = true;
     let note;
     try {
-      if (pass) {
-        try { await createLogin(email, pass); note = " They can sign in now with the password you set."; }
-        catch (err) {
-          if (!String(err.code).includes("email-already-in-use")) throw err;
-          note = " This email already had a login, so their current password still works. They can also tap Forgot password.";
-        }
-      } else {
-        note = ` Ask them to tap Create account with ${email} and choose a password.`;
+      // Without a password: make the login with a random one nobody knows, then email them a link to choose their own.
+      const temp = pass || Array.from(crypto.getRandomValues(new Uint8Array(18)), b => b.toString(36).padStart(2, "0")).join("");
+      let existed = false;
+      try { await createLogin(email, temp); }
+      catch (err) {
+        if (!String(err.code).includes("email-already-in-use")) throw err;
+        existed = true;
+      }
+      if (existed) note = " This email already had a login, so their current password still works. They can also tap Forgot password.";
+      else if (pass) note = " They can sign in now with the password you set.";
+      else {
+        try { await auth.sendPasswordResetEmail(email); note = ` We emailed ${email} a link to choose their password (check spam if it doesn't arrive).`; }
+        catch (err) { note = ` The email with their password link didn't send. Use Send password reset next to their name below.`; }
       }
       await fdb.collection("users").doc(email).set({ email, name, role, status: "active", createdAt: now, updatedAt: now, updatedBy: emailKey(me.email) });
       setMsg(accMsg, `Added ${name}.` + note, "info");
@@ -2921,7 +2889,7 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
         return;
       }
       fdb.collection("users").doc(email).delete()
-        .then(() => setMsg(accMsg, `Removed ${email}. If they sign in again, they'll have to ask for access.`, "info"))
+        .then(() => setMsg(accMsg, `Removed ${email}. They can't get in again unless an admin adds them back.`, "info"))
         .catch(() => setMsg(accMsg, "That account couldn't be removed. Try again.", "bad"));
     }
   });
