@@ -665,6 +665,16 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       </form>
       <p class="hint" id="minver-latest"></p>
       <p id="minver-msg" class="msg" hidden style="margin-top:10px"></p>
+
+      <h3 style="margin-top:18px">Audit log</h3>
+      <p class="hint">A record of every important action: sign-ins and sign-outs, tank changes and deletions, open/closed spaces and requests, account changes, password resets and exports. Entries can't be changed or deleted, not even by admins.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button type="button" id="audit-load">Show the latest 200</button>
+        <input id="audit-filter" type="search" placeholder="Filter: person, tank, action…" aria-label="Filter the audit log" hidden style="flex:1;min-width:180px">
+        <button type="button" id="audit-csv" hidden>Download CSV</button>
+      </div>
+      <p id="audit-msg" class="msg" hidden style="margin-top:10px"></p>
+      <div class="table-scroll" style="margin-top:10px"><table id="audit-table"></table></div>
     </section>
 
     <footer class="site-foot">
@@ -887,6 +897,19 @@ const outsideTanks = () => [...tanks.values()].filter(t => t.inYard && t.outside
 const activityText = t => ACTIVITY[t.activity] || t.activity || "Outside";
 const tanksAt = code => inYard().filter(t => t.location === code).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
 
+// ---------- Audit log ----------
+// Important actions are added to "auditLog": when, who, what, on what. The database rules let people add entries
+// only as themselves, let only admins read them, and let nobody change or delete them. Offline entries sync later.
+function audit(action, target, detail) {
+  if (!fdb || !me) return Promise.resolve();
+  const at = new Date().toISOString();
+  const id = at.replace(/\D/g, "") + "-" + Math.random().toString(36).slice(2, 8);
+  return fdb.collection("auditLog").doc(id).set({
+    at, by: emailKey(me.email), action: String(action).slice(0, 80),
+    target: String(target || "").slice(0, 100), detail: String(detail || "").slice(0, 300),
+  }).catch(() => { /* rules not published yet: the action itself still worked */ });
+}
+
 // Firestore applies writes locally at once and syncs them when the phone is online.
 function writeTank(id, body, okText) {
   if (!fdb || !me) return false;
@@ -896,6 +919,8 @@ function writeTank(id, body, okText) {
       ? "Your account isn't allowed to change tank records. Ask your admin."
       : "That change didn't save. Check your connection and try again.", "bad");
   });
+  const h = Array.isArray(body.history) && body.history[0];
+  if (h) audit("Tank: " + h.action, id, [h.location, STATUS[h.status] || h.status, h.customer].filter(Boolean).join(" · "));
   if (okText) setMsg(msgEl, okText + (navigator.onLine ? "" : " It will sync when you're back online."), "info");
   return true;
 }
@@ -997,8 +1022,12 @@ const amAdmin = () => !!profile && profile.role === "admin" && profile.status ==
 function deleteRecord(id) {
   if (!fdb) return;
   if (!amAdmin()) { setMsg(regMsg, "Only an admin can delete tank records and their history.", "bad"); return; }
+  const prev = tanks.get(id) || {};
   fdb.collection("tanks").doc(id).delete()
-    .then(() => setMsg(regMsg, `Deleted the record for ${fmtTank(id)}.`, "info"))
+    .then(() => {
+      setMsg(regMsg, `Deleted the record for ${fmtTank(id)}.`, "info");
+      audit("Tank record deleted", id, `Last slot ${prev.location || prev.lastLocation || "-"}, ${STATUS[prev.status] || prev.status || ""}, customer ${prev.customer || "-"}, ${(prev.history || []).length} history entries removed`);
+    })
     .catch(e => setMsg(regMsg, e && e.code === "permission-denied" ? "Only an admin can delete tank records and their history."
       : "That record couldn't be deleted. Try again.", "bad"));
 }
@@ -1529,8 +1558,10 @@ function setOpenSpaces(code, n) {
   const used = tanksAt(code).length;
   n = Math.max(0, Math.min(MAX_SPACES, n));
   if (n < used) { slotMsg(`${code} has ${used} tank${used === 1 ? "" : "s"} in it, so at least ${used} space${used === 1 ? "" : "s"} must stay open.`); return; }
+  const was = capOf(code);
   fdb.collection("slots").doc(code).set({ code, open: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) })
     .catch(err => slotMsg(slotErr(err)));
+  audit(n ? "Slot spaces changed" : "Slot locked", code, `${was} → ${n} of ${MAX_SPACES} spaces open`);
   setMsg(msgEl, n ? `${code}: ${n} of ${MAX_SPACES} spaces open.` : `${code} is locked. Staff can't park here until you open spaces again.`, "info");
 }
 function askForSpace(code) {
@@ -1538,7 +1569,7 @@ function askForSpace(code) {
   const sel = document.querySelector(`.req-n[data-code="${code}"]`);
   const spaces = Math.max(1, Math.min(MAX_SPACES, sel ? +sel.value : 1));
   fdb.collection("slotRequests").doc(code).set({ code, by: emailKey(me.email), name: (profile && profile.name) || person(me.email), at: new Date().toISOString(), spaces })
-    .then(() => { reqPick.delete(code); setMsg(msgEl, `Asked an admin for ${moreText(spaces)} at ${code}.`, "info"); })
+    .then(() => { reqPick.delete(code); setMsg(msgEl, `Asked an admin for ${moreText(spaces)} at ${code}.`, "info"); audit("Space requested", code, moreText(spaces)); })
     .catch(err => slotMsg(err && err.code === "permission-denied"
       ? "The request couldn't be sent. Ask your admin to publish the latest database rules in Firebase." : slotErr(err)));
 }
@@ -1548,11 +1579,15 @@ function approveRequest(code) {
   const batch = fdb.batch();
   batch.set(fdb.collection("slots").doc(code), { code, open: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) });
   batch.delete(fdb.collection("slotRequests").doc(code));
+  const req = slotReqs.get(code) || {};
   batch.commit().catch(err => slotMsg(slotErr(err)));
+  audit("Space request approved", code, `${n} of ${MAX_SPACES} spaces open; asked by ${req.by || "-"}`);
   setMsg(msgEl, `Approved: ${code} now has ${n} of ${MAX_SPACES} spaces open.`, "info");
 }
 function dropRequest(code, rejected) {
+  const req = slotReqs.get(code) || {};
   fdb.collection("slotRequests").doc(code).delete().catch(err => slotMsg(slotErr(err)));
+  audit(rejected ? "Space request rejected" : "Space request cancelled", code, `asked by ${req.by || "-"}`);
   setMsg(msgEl, rejected ? `Rejected the request for ${code}.` : `Cancelled your request for ${code}.`, "info");
 }
 // Admins see every waiting request at the top of the page.
@@ -1968,7 +2003,7 @@ function renderData() { renderStats(); renderView(); renderRegister(); renderExp
 // ---------- Export settings ----------
 // Web/app adapters: files go to the download or share sheet; people are shown by email name.
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-async function exSave(name, blob, mime) { saveFile(name, blob, mime); return { status: "saved" }; }
+async function exSave(name, blob, mime) { saveFile(name, blob, mime); audit("Data exported", name, ""); return { status: "saved" }; }
 const exPerson = person;
 async function exPrepare() { /* names come straight from the stored emails */ }
 
@@ -2421,6 +2456,7 @@ document.addEventListener("click", e => {
   batch.delete(fdb.collection("chat").doc(b.dataset.chatDel));
   if (m && m.photo) batch.delete(fdb.collection("chatPhotos").doc(m.photo));
   batch.commit().catch(() => setMsg($("banner"), "That message couldn't be deleted.", "bad"));
+  audit("Chat message deleted", m ? m.by : "", m ? (m.text || "(photo)") : "");
 });
 
 // ---------- Photos in the chat ----------
@@ -2491,6 +2527,7 @@ document.addEventListener("click", async e => {
 });
 function startApp(u) {
   show("app");
+  audit("Signed in", "", window.AndroidBridge ? `phone app 1.0.${window.APP_BUILD || "?"}` : "website");
   $("me-name").textContent = profile.name || person(u.email);
   dataState = "connecting";
   setSync(); renderData();
@@ -2652,7 +2689,44 @@ function setAdmin(on) {
   }
   if (!on && usersUnsub) { usersUnsub(); usersUnsub = null; }
   if (!on && rrUnsub) { rrUnsub(); rrUnsub = null; resetReqs = []; }
+  if (!on && auditRows.length) {
+    auditRows = []; $("audit-table").innerHTML = ""; $("audit-load").textContent = "Show the latest 200";
+    $("audit-filter").value = ""; $("audit-filter").hidden = $("audit-csv").hidden = true;
+  }
 }
+// Audit log view (admins): loads on demand, so it costs reads only when someone looks.
+let auditRows = [];
+function renderAudit() {
+  const q = $("audit-filter").value.trim().toLowerCase();
+  const rows = q ? auditRows.filter(r => [r.by, r.action, r.target, r.detail].join(" ").toLowerCase().includes(q)) : auditRows;
+  $("audit-table").innerHTML = rows.length
+    ? `<thead><tr><th>When</th><th>Who</th><th>Action</th><th>On</th><th>Details</th></tr></thead><tbody>${rows.map(r =>
+      `<tr><td>${esc(fullDate(r.at))}</td><td>${esc(r.by)}</td><td>${esc(r.action)}</td><td class="mono">${esc(r.target)}</td><td>${esc(r.detail)}</td></tr>`).join("")}</tbody>`
+    : `<tbody><tr><td class="hint">${auditRows.length ? "Nothing matches the filter." : "No entries yet."}</td></tr></tbody>`;
+}
+$("audit-load").addEventListener("click", async () => {
+  const b = $("audit-load");
+  b.disabled = true; setMsg($("audit-msg"), "");
+  try {
+    const snap = await fdb.collection("auditLog").orderBy("at", "desc").limit(200).get();
+    auditRows = snap.docs.map(d => d.data());
+    $("audit-filter").hidden = $("audit-csv").hidden = false;
+    b.textContent = "Refresh";
+    renderAudit();
+  } catch (err) {
+    setMsg($("audit-msg"), err && err.code === "permission-denied"
+      ? "The audit log can't be read yet. Publish the latest database rules in Firebase." : "Couldn't load the audit log. Check your connection and try again.", "bad");
+  } finally { b.disabled = false; }
+});
+$("audit-filter").addEventListener("input", renderAudit);
+$("audit-csv").addEventListener("click", () => {
+  // Cells starting with = + - @ get a ' so Excel shows them as text, never as formulas.
+  const cell = v => { let s = String(v == null ? "" : v); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
+  const lines = [["When (UTC)", "Who", "Action", "On", "Details"].map(cell).join(","),
+    ...auditRows.map(r => [r.at, r.by, r.action, r.target, r.detail].map(cell).join(","))];
+  saveFile(`RSAT-Yard-audit-log-${new Date().toISOString().slice(0, 10)}.csv`, new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }), "text/csv");
+  audit("Audit log downloaded", "", `${auditRows.length} entries`);
+});
 // Password reset requests waiting for an admin (collection "resetRequests", id = email).
 let resetReqs = [], rrUnsub = null;
 function renderResetReqs() {
@@ -2709,7 +2783,10 @@ function updateAccount(email, change, okText) {
   const a = accounts.find(x => x.email === email);
   if (!a) return;
   fdb.collection("users").doc(email).set(Object.assign({}, a, change, { updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) }))
-    .then(() => setMsg(accMsg, okText, "info"))
+    .then(() => {
+      setMsg(accMsg, okText, "info");
+      audit("Account changed", email, Object.keys(change).map(k => `${k}: ${a[k] || "-"} → ${change[k]}`).join(", "));
+    })
     .catch(() => setMsg(accMsg, "That change didn't save. Check your connection and try again.", "bad"));
 }
 // A second Firebase app creates logins, so the admin stays signed in.
@@ -2791,7 +2868,11 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
       setMsg($("login-msg"), `Your request has gone to an admin. When they approve it, a reset link will be emailed to ${email}. Open it, choose a new password, then sign in here. Check your spam folder if it doesn't arrive.`, "ok");
     });
   });
-  $("logout-btn").addEventListener("click", () => auth.signOut());
+  // The sign-out entry is written first (waiting at most 1.5 s), because signed-out people can't add entries.
+  $("logout-btn").addEventListener("click", async () => {
+    await Promise.race([audit("Signed out", "", ""), new Promise(r => setTimeout(r, 1500))]);
+    auth.signOut();
+  });
   $("wait-logout").addEventListener("click", () => auth.signOut());
 
   $("claim-btn").addEventListener("click", async () => {
@@ -2800,7 +2881,7 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     batch.set(fdb.collection("users").doc(email), { email, name: me.displayName || person(email), role: "admin", status: "active", createdAt: now });
     batch.set(fdb.collection("config").doc("owner"), { email, at: now });
     btn.disabled = true;
-    try { await batch.commit(); }
+    try { await batch.commit(); audit("Set up as first admin", email, ""); }
     catch (err) {
       setMsg($("wait-msg"), err.code === "permission-denied"
         ? "Couldn't set you up as admin. Someone else may already be the admin, or the database rules are out of date."
@@ -2813,7 +2894,10 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     e.preventDefault();
     const n = Math.max(0, parseInt($("minver").value, 10) || 0);
     fdb.collection("config").doc("app").set({ minBuild: n, updatedAt: new Date().toISOString(), updatedBy: emailKey(me.email) })
-      .then(() => setMsg($("minver-msg"), n ? `Saved. Phone apps older than version 1.0.${n} now have to update before they can continue.` : "Saved. Every app version is allowed.", "info"))
+      .then(() => {
+        setMsg($("minver-msg"), n ? `Saved. Phone apps older than version 1.0.${n} now have to update before they can continue.` : "Saved. Every app version is allowed.", "info");
+        audit("Oldest app version changed", "", n ? `1.0.${n}` : "every version allowed");
+      })
       .catch(() => setMsg($("minver-msg"), "That didn't save. Check your connection and that the latest database rules are published.", "bad"));
   });
   $("acc-form").addEventListener("submit", async e => {
@@ -2839,6 +2923,7 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
         catch (err) { note = ` The email with their password link didn't send. Use Send password reset next to their name below.`; }
       }
       await fdb.collection("users").doc(email).set({ email, name, role, status: "active", createdAt: now, updatedAt: now, updatedBy: emailKey(me.email) });
+      audit("Account created", email, `${name}, ${ROLE[role]}, ${existed ? "login already existed" : pass ? "password set by admin" : "password link emailed"}`);
       setMsg(accMsg, `Added ${name}.` + note, "info");
       $("acc-form").reset();
     } catch (err) {
@@ -2854,15 +2939,17 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     const email = b.dataset.email, done = () => fdb.collection("resetRequests").doc(email).delete();
     b.disabled = true;
     try {
-      if (b.dataset.rr === "no") { await done(); setMsg(accMsg, `Declined the password reset for ${email}. No email was sent.`, "info"); return; }
+      if (b.dataset.rr === "no") { await done(); audit("Password reset declined", email, "no email sent"); setMsg(accMsg, `Declined the password reset for ${email}. No email was sent.`, "info"); return; }
       try { await auth.sendPasswordResetEmail(email); }
       catch (err) {
         if (!String(err.code).includes("user-not-found")) throw err;
         await done();
+        audit("Password reset request removed", email, "no login with this email");
         setMsg(accMsg, `${email} has no login, so there's nothing to reset. The request was removed.`, "bad");
         return;
       }
       await done();
+      audit("Password reset approved", email, "reset link emailed");
       setMsg(accMsg, `Approved. A password reset link was emailed to ${email}.`, "info");
     } catch (err) {
       b.disabled = false;
@@ -2881,7 +2968,7 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     if (act === "disable") updateAccount(email, { status: "disabled" }, `Turned off ${email}. They can't see the yard any more.`);
     if (act === "enable") updateAccount(email, { status: "active" }, `Turned ${email} back on.`);
     if (act === "reset") auth.sendPasswordResetEmail(email)
-      .then(() => setMsg(accMsg, `Sent a password reset link to ${email}.`, "info"))
+      .then(() => { setMsg(accMsg, `Sent a password reset link to ${email}.`, "info"); audit("Password reset sent", email, "sent by admin"); })
       .catch(err => setMsg(accMsg, authError(err), "bad"));
     if (act === "delete") {
       if (!b.classList.contains("armed")) {
@@ -2889,8 +2976,12 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
         setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); renderAccounts(); } }, 4000);
         return;
       }
+      const gone = accounts.find(x => x.email === email) || {};
       fdb.collection("users").doc(email).delete()
-        .then(() => setMsg(accMsg, `Removed ${email}. They can't get in again unless an admin adds them back.`, "info"))
+        .then(() => {
+          setMsg(accMsg, `Removed ${email}. They can't get in again unless an admin adds them back.`, "info");
+          audit("Account deleted", email, `${gone.name || "-"}, ${ROLE[gone.role] || gone.role || "-"}`);
+        })
         .catch(() => setMsg(accMsg, "That account couldn't be removed. Try again.", "bad"));
     }
   });

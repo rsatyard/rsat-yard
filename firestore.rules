@@ -90,6 +90,19 @@ service cloud.firestore {
         && request.resource.data.at is string && request.resource.data.at.size() <= 40;
     }
 
+    // Audit log: everyone approved adds entries as themselves; only admins read them.
+    // There is no update or delete rule, so nobody (not even an admin) can change or remove an entry.
+    match /auditLog/{id} {
+      allow get, list: if isAdmin();
+      allow create: if active()
+        && request.resource.data.keys().hasOnly(['at', 'by', 'action', 'target', 'detail'])
+        && request.resource.data.by == myEmail()
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && request.resource.data.action is string && request.resource.data.action.size() <= 80
+        && request.resource.data.target is string && request.resource.data.target.size() <= 100
+        && request.resource.data.detail is string && request.resource.data.detail.size() <= 300;
+    }
+
     // Oldest phone-app build allowed (set by admins under Accounts).
     match /config/app {
       allow get: if signedIn();
