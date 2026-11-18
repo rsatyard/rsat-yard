@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     private PermissionRequest pendingPermission;
     private ValueCallback<Uri[]> fileCallback;
     private Uri photoUri;
+    private volatile boolean ssoActive = false;   // the Microsoft sign-in pages are open
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +67,9 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri url = request.getUrl();
-                if ("appassets.androidplatform.net".equals(url.getHost())) return false;
+                if ("appassets.androidplatform.net".equals(url.getHost())) { ssoActive = false; return false; }
+                // During the Microsoft sign-in, its pages open inside the app; it ends back on the app's own page.
+                if (ssoActive && "https".equals(url.getScheme())) return false;
                 // Links to other sites open in the phone's browser.
                 try { startActivity(new Intent(Intent.ACTION_VIEW, url)); } catch (Exception ignored) { }
                 return true;
@@ -157,6 +160,8 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        // Back on a Microsoft sign-in page: cancel the sign-in and return to the app's sign-in screen.
+        if (ssoActive) { ssoActive = false; web.loadUrl(START_URL); return; }
         // Let the page close the camera first; exit only if it didn't handle the press.
         web.evaluateJavascript("(window.onAndroidBack && window.onAndroidBack()) ? 'handled' : 'no'", result -> {
             if (!"\"handled\"".equals(result)) MainActivity.super.onBackPressed();
@@ -165,6 +170,10 @@ public class MainActivity extends Activity {
 
     /** Called from the page to hand an exported file (Excel, CSV, PDF) to the Android share sheet. */
     private class Bridge {
+        /** Called just before the page opens the company Microsoft sign-in. */
+        @JavascriptInterface
+        public void ssoStart() { ssoActive = true; }
+
         @JavascriptInterface
         public void shareFile(String name, String base64, String mime) {
             try {

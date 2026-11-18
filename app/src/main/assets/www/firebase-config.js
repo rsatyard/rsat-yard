@@ -15,6 +15,11 @@ window.APK_URL = "https://github.com/rsatyard/rsat-yard/releases/latest/download
 // GitHub repository the Android app checks for a newer version.
 window.UPDATE_REPO = "rsatyard/rsat-yard";
 
+// Company Microsoft sign-in: the sign-in server's public address (its APP_BASE_URL), e.g. "https://yard.rsa.global".
+// Leave empty until IT has the server running. When set, the phone app shows only "Sign in with Microsoft"
+// and the old website address forwards people to the server. (The server's own pages set this by themselves.)
+window.SSO_URL = "";
+
 // Office website address, used for the Approve link in access-request emails.
 window.SITE_URL = "https://rsatyard.github.io/rsat-yard/";
 

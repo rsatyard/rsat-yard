@@ -359,6 +359,11 @@ form.details { display: grid; gap: 8px; }
 .gate { background: linear-gradient(160deg, #374151 0%, #111827 100%); gap: 16px; }
 .gate .panel { border: 0; box-shadow: 0 24px 60px rgba(0,0,0,0.35); align-self: center; }
 .gate .brand span { color: var(--ink); }
+/* Microsoft sign-in button: the spinner shows while the browser goes to the sign-in page. */
+#sso-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+.spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 /* Panels and section titles */
 .panel { box-shadow: 0 1px 2px rgba(19,35,122,0.06), 0 6px 18px rgba(19,35,122,0.06); }
 .wrap h2 { display: flex; align-items: center; gap: 10px; }
@@ -471,6 +476,11 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
   <div class="panel">
     <div class="brand"><span>Yard</span></div>
     <p class="hint" id="login-intro">Sign in with your account.</p>
+    <!-- Company sign-in (shown instead of the email and password form once SSO_URL is set). -->
+    <div id="sso-box" hidden style="display:grid;gap:12px">
+      <button class="primary" type="button" id="sso-btn"><span class="spinner" id="sso-spin" hidden></span><span id="sso-label">Sign in with Microsoft</span></button>
+      <p class="hint">Use your company Microsoft account. Only people an admin has added under Accounts can get in.</p>
+    </div>
     <form id="login-form" autocomplete="on">
       <label>Email <input id="login-email" type="email" autocomplete="username" required></label>
       <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
@@ -644,11 +654,12 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
       <form class="acc-add" id="acc-form" autocomplete="off">
         <label>Name <input id="acc-name" type="text" required></label>
         <label>Email <input id="acc-email" type="email" required></label>
-        <label>Password (optional) <input id="acc-pass" type="text" minlength="6" placeholder="Leave empty: we email them a link"></label>
+        <label id="acc-pass-label">Password (optional) <input id="acc-pass" type="text" minlength="6" placeholder="Leave empty: we email them a link"></label>
         <label>Role <select id="acc-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></label>
         <button class="primary" type="submit" id="acc-add-btn">Add account</button>
       </form>
-      <p class="hint">Only admins create accounts; nobody can sign up by themselves. With a password, the account is ready to sign in. Without one, the person gets an email with a link to choose their own password.</p>
+      <p class="hint" id="acc-sso-hint" hidden>Only admins create accounts; nobody can sign up by themselves. Enter the person's company email: they sign in with their Microsoft account, and nobody needs a yard password.</p>
+      <p class="hint" id="acc-pass-hint">Only admins create accounts; nobody can sign up by themselves. With a password, the account is ready to sign in. Without one, the person gets an email with a link to choose their own password.</p>
       <p id="acc-msg" class="msg" hidden style="margin-top:10px"></p>
       <div id="rr-box" hidden style="margin-top:14px">
         <h3>Password reset requests</h3>
@@ -2527,7 +2538,7 @@ document.addEventListener("click", async e => {
 });
 function startApp(u) {
   show("app");
-  audit("Signed in", "", window.AndroidBridge ? `phone app 1.0.${window.APP_BUILD || "?"}` : "website");
+  audit("Signed in", "", (window.AndroidBridge ? `phone app 1.0.${window.APP_BUILD || "?"}` : "website") + (SSO ? ", Microsoft" : ""));
   $("me-name").textContent = profile.name || person(u.email);
   dataState = "connecting";
   setSync(); renderData();
@@ -2682,7 +2693,7 @@ function setAdmin(on) {
     }, () => setMsg(accMsg, "Couldn't load the accounts. Sign out and back in.", "bad"));
     fdb.collection("config").doc("owner").get().then(d => { ownerEmail = d.exists ? d.data().email : ""; renderAccounts(); }).catch(() => {});
     showLatestVersion();
-    rrUnsub = fdb.collection("resetRequests").onSnapshot(snap => {
+    if (!SSO) rrUnsub = fdb.collection("resetRequests").onSnapshot(snap => {   // no passwords with Microsoft sign-in
       resetReqs = snap.docs.map(d => d.data()).sort((a, b) => String(b.at).localeCompare(String(a.at)));
       renderAccounts();
     }, () => { resetReqs = []; renderAccounts(); });   // rules not published yet: no requests to show
@@ -2752,7 +2763,7 @@ function renderAccounts() {
     let actions;
     if (locked) actions = `<span class="hint">${a.email === mine ? "You" : "Owner"}</span>`;
     else if (a.status === "pending") actions = `<button type="button" class="small primary" data-acc="approve" data-email="${e}">Approve</button><button type="button" class="small danger" data-acc="delete" data-email="${e}">Reject</button>`;
-    else actions = `<button type="button" class="small" data-acc="reset" data-email="${e}">Send password reset</button>` + (a.status === "active"
+    else actions = (SSO ? "" : `<button type="button" class="small" data-acc="reset" data-email="${e}">Send password reset</button>`) + (a.status === "active"
       ? `<button type="button" class="small danger" data-acc="disable" data-email="${e}">Turn off</button>`
       : `<button type="button" class="small" data-acc="enable" data-email="${e}">Turn on</button><button type="button" class="small danger" data-acc="delete" data-email="${e}">Delete</button>`);
     const role = locked ? esc(ROLE[a.role] || a.role)
@@ -2819,13 +2830,32 @@ function checkForUpdate() {
 const cfg = window.FIREBASE_CONFIG || {};
 if (window.APK_URL && !window.AndroidBridge) { $("apk-link").href = window.APK_URL; $("apk-link-wrap").hidden = false; }
 
+// Company sign-in (Microsoft, through the RSA SSO service). It's on when SSO_URL is set: the sign-in server sets it
+// on its own pages, and firebase-config.js sets it for the phone app. Without it the email and password form shows.
+const SSO = String(window.SSO_URL || "").replace(/\/+$/, "");
+let ssoOrigin = "";
+try { ssoOrigin = SSO ? new URL(SSO).origin : ""; } catch (e) { /* bad address: stays off */ }
+const SSO_ERRORS = {
+  no_account: "Your Microsoft account isn't set up for the yard. Ask an admin to add your email under Accounts, then sign in again.",
+  invalid_token: "Your Microsoft sign-in couldn't be confirmed. Please try again.",
+  server_error: "The sign-in service isn't available right now. Try again in a few minutes.",
+};
+
 if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
   show("setup-screen");
+} else if (ssoOrigin && !window.AndroidBridge && location.origin !== ssoOrigin) {
+  // The office website moved to the company sign-in address (for example the old github.io address).
+  waitScreen("The yard has moved", `Taking you to ${SSO} …`, false);
+  location.replace(SSO + "/");
 } else {
   firebase.initializeApp(cfg);
   auth = firebase.auth();
   fdb = firebase.firestore();
   fdb.enablePersistence({ synchronizeTabs: true }).catch(() => { /* offline cache unavailable: still works online */ });
+
+  const inApp = !!window.AndroidBridge;
+  const firstAuth = new Promise(res => { const off = auth.onAuthStateChanged(u => { res(u); if (typeof off === "function") off(); }); });
+  let ssoBusy = !!SSO;   // while the Microsoft sign-in is being checked, show "Signing in…" instead of the sign-in page
 
   auth.onAuthStateChanged(u => {
     me = u;
@@ -2834,7 +2864,12 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     stopApp();
     profile = null;
     $("update-bar").hidden = true;
-    if (!u) { dataState = "connecting"; askedFor = null; setAdmin(false); show("login-screen"); return; }
+    if (!u) {
+      dataState = "connecting"; askedFor = null; setAdmin(false);
+      if (ssoBusy) waitScreen("Signing in…", "Checking your Microsoft sign-in.", false);
+      else show("login-screen");
+      return;
+    }
     waitScreen("Signing in…", "Checking your account.", false);
     cfgUnsub = fdb.collection("config").doc("app").onSnapshot(snap => onAppConfig(u, snap), () => { /* older rules: no version limit */ });
     profUnsub = fdb.collection("users").doc(emailKey(u.email)).onSnapshot({ includeMetadataChanges: true }, snap => onProfile(u, snap), err => {
@@ -2868,12 +2903,74 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
       setMsg($("login-msg"), `Your request has gone to an admin. When they approve it, a reset link will be emailed to ${email}. Open it, choose a new password, then sign in here. Check your spam folder if it doesn't arrive.`, "ok");
     });
   });
+  // ---- Microsoft sign-in ----
+  const ssoParams = new URLSearchParams(location.search);
+  const ssoError = ssoParams.get("sso_error");
+  const ssoToken = (location.hash.match(/[#&]sso_token=([^&]+)/) || [])[1];
+  if (ssoError || ssoToken) history.replaceState(null, "", location.pathname);   // keeps the one-time token out of history
+  function ssoButton(waiting) {
+    $("sso-btn").disabled = waiting;
+    $("sso-spin").hidden = !waiting;
+    $("sso-label").textContent = waiting ? "Opening Microsoft sign-in…" : "Sign in with Microsoft";
+  }
+  // Ends the sign-in server's session too (website only; the phone app has no server session).
+  function endSsoSession() {
+    if (!SSO || inApp) return;
+    const f = document.createElement("form");
+    f.method = "post"; f.action = SSO + "/auth/logout";
+    document.body.appendChild(f); f.submit();
+  }
+  if (SSO) {
+    $("sso-box").hidden = false;
+    $("login-form").hidden = $("reset-form").hidden = true;
+    $("login-intro").textContent = "Sign in with your company account.";
+    $("acc-pass-label").hidden = $("acc-pass-hint").hidden = true;   // Accounts: no passwords to set
+    $("acc-sso-hint").hidden = false;
+    if (ssoError) setMsg($("login-msg"), SSO_ERRORS[ssoError] || "Sign-in didn't work. Please try again.", "bad");
+    $("sso-btn").addEventListener("click", () => {
+      ssoButton(true);
+      setMsg($("login-msg"), "");
+      if (inApp && window.AndroidBridge.ssoStart) window.AndroidBridge.ssoStart();   // lets the Microsoft pages open inside the app
+      location.href = SSO + "/auth/sso/initiate" + (inApp ? "?app=1" : "");
+    });
+    window.addEventListener("pageshow", () => ssoButton(false));   // back from the Microsoft page without signing in
+    (async () => {
+      try {
+        if (ssoToken) {
+          // Coming back from the Microsoft sign-in (phone app): a one-time token.
+          await auth.signInWithCustomToken(decodeURIComponent(ssoToken));
+        } else if (!inApp) {
+          // Website: the sign-in server's session decides who is signed in.
+          let r = null;
+          try { r = await fetch(SSO + "/auth/firebase-token", { credentials: "same-origin", cache: "no-store" }); }
+          catch (e) { /* offline: keep any sign-in this browser already has */ }
+          if (r && r.ok) {
+            const d = await r.json();
+            const cur = await firstAuth;
+            if (!cur || emailKey(cur.email) !== d.email) await auth.signInWithCustomToken(d.token);
+          } else if (r && (r.status === 401 || r.status === 403)) {
+            if (await firstAuth) await auth.signOut();
+            if (r.status === 403) setMsg($("login-msg"), SSO_ERRORS.no_account, "bad");
+          } else if (r) {
+            setMsg($("login-msg"), SSO_ERRORS.server_error, "bad");
+          }
+        }
+      } catch (err) {
+        setMsg($("login-msg"), "Your Microsoft sign-in couldn't be finished. Check your connection and try again.", "bad");
+      } finally {
+        ssoBusy = false;
+        if (!auth.currentUser) show("login-screen");
+      }
+    })();
+  }
+
   // The sign-out entry is written first (waiting at most 1.5 s), because signed-out people can't add entries.
   $("logout-btn").addEventListener("click", async () => {
     await Promise.race([audit("Signed out", "", ""), new Promise(r => setTimeout(r, 1500))]);
-    auth.signOut();
+    await auth.signOut();
+    endSsoSession();
   });
-  $("wait-logout").addEventListener("click", () => auth.signOut());
+  $("wait-logout").addEventListener("click", async () => { await auth.signOut(); endSsoSession(); });
 
   $("claim-btn").addEventListener("click", async () => {
     const btn = $("claim-btn"), email = emailKey(me.email), now = new Date().toISOString();
@@ -2907,6 +3004,18 @@ if (!cfg.apiKey || cfg.apiKey.indexOf("PASTE") === 0 || !window.firebase) {
     if (accounts.some(a => a.email === email)) { setMsg(accMsg, `${email} is already in the list below. Approve it or change it there.`, "bad"); return; }
     btn.disabled = true;
     let note;
+    if (SSO) {
+      // Microsoft sign-in: the account record is all that's needed. Their Firebase login is made on first sign-in.
+      try {
+        await fdb.collection("users").doc(email).set({ email, name, role, status: "active", createdAt: now, updatedAt: now, updatedBy: emailKey(me.email) });
+        audit("Account created", email, `${name}, ${ROLE[role]}, Microsoft sign-in`);
+        setMsg(accMsg, `Added ${name}. They can sign in now with their company Microsoft account (${email}).`, "info");
+        $("acc-form").reset();
+      } catch (err) {
+        setMsg(accMsg, "The account couldn't be added. Check your connection and try again.", "bad");
+      } finally { btn.disabled = false; }
+      return;
+    }
     try {
       // Without a password: make the login with a random one nobody knows, then email them a link to choose their own.
       const temp = pass || Array.from(crypto.getRandomValues(new Uint8Array(18)), b => b.toString(36).padStart(2, "0")).join("");
