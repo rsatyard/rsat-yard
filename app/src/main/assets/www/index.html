@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#13237a">
-<title>RSAT Yard</title>
-<link rel="icon" type="image/png" href="img/rsa-talke-logo.png">
+<meta name="theme-color" content="#1f2937">
+<title>Yard</title>
+<!-- Neutral tab icon: the sign-in experience shows no company branding (the logo appears only after sign-in). -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23374151'/%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='none' stroke='%23e5e7eb' stroke-width='2.5'/%3E%3Cpath d='M11 10v13M16 10v13M21 10v13' stroke='%23e5e7eb' stroke-width='1.5'/%3E%3C/svg%3E">
 <style>
 /* Layout: sticky top bar; scan station beside the live yard map (stacked on phones); register, export, labels below. */
 /* Colours follow the RSA Talke logo: navy blue (#13237a) and red (#c4122f). */
@@ -353,13 +354,11 @@ form.details { display: grid; gap: 8px; }
 
 /* ---------- RSA Talke look: navy panels and headers, red markers ---------- */
 @media (prefers-color-scheme: dark) { :root { --brand-navy: #23379a; } }
-/* Sign-in: navy background with a red glow, white card with a red top edge. */
-.gate { background: radial-gradient(90% 60% at 100% 0%, rgba(196,18,47,0.35), transparent 70%),
-  radial-gradient(70% 50% at 0% 100%, rgba(196,18,47,0.18), transparent 70%), linear-gradient(160deg, #13237a 0%, #0a1446 100%);
-  grid-template-rows: 1fr auto; gap: 16px; }
-.gate .panel { border: 0; border-top: 5px solid var(--brand-red); box-shadow: 0 24px 60px rgba(0,0,0,0.35); align-self: center; }
-.gate .brand { justify-content: space-between; }
-.gate::after { content: "RSA Talke · Yard tank tracking"; color: rgba(255,255,255,0.75); font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+/* Sign-in, setup and waiting screens are deliberately unbranded (no logo, company colours or tagline):
+   company branding shows only inside the app, after sign-in. */
+.gate { background: linear-gradient(160deg, #374151 0%, #111827 100%); gap: 16px; }
+.gate .panel { border: 0; box-shadow: 0 24px 60px rgba(0,0,0,0.35); align-self: center; }
+.gate .brand span { color: var(--ink); }
 /* Panels and section titles */
 .panel { box-shadow: 0 1px 2px rgba(19,35,122,0.06), 0 6px 18px rgba(19,35,122,0.06); }
 .wrap h2 { display: flex; align-items: center; gap: 10px; }
@@ -461,7 +460,7 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
 <!-- Setup needed -->
 <div class="gate" id="setup-screen" hidden>
   <div class="panel">
-    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
+    <div class="brand"><span>Yard</span></div>
     <h2>Connect a database</h2>
     <p>This copy of the app isn't connected to your tank database yet. Put your Firebase settings in <code>firebase-config.js</code>, as described in step 1 of the README.</p>
   </div>
@@ -470,8 +469,8 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
 <!-- Sign in -->
 <div class="gate" id="login-screen" hidden>
   <div class="panel">
-    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
-    <p class="hint" id="login-intro">Tank tracking for the RSAT yard. Sign in with your account.</p>
+    <div class="brand"><span>Yard</span></div>
+    <p class="hint" id="login-intro">Sign in with your account.</p>
     <form id="login-form" autocomplete="on">
       <label>Email <input id="login-email" type="email" autocomplete="username" required></label>
       <label>Password <input id="login-pass" type="password" autocomplete="current-password" required></label>
@@ -493,7 +492,7 @@ input.need:not(:placeholder-shown) { border-color: var(--line); box-shadow: none
 <!-- Signed in, but not approved (or first-time setup) -->
 <div class="gate" id="wait-screen" hidden>
   <div class="panel">
-    <div class="brand"><img class="logo" src="img/rsa-talke-logo.png" alt="RSA Talke"><span>Yard</span></div>
+    <div class="brand"><span>Yard</span></div>
     <h2 id="wait-title">Waiting for approval</h2>
     <p id="wait-text"></p>
     <button class="primary" type="button" id="claim-btn" hidden>Set me up as the admin</button>
@@ -2278,6 +2277,8 @@ function setSync() {
 }
 function show(screen) {
   ["setup-screen", "login-screen", "wait-screen", "app"].forEach(id => { $(id).hidden = id !== screen; });
+  // The company name appears only once someone is signed in and in the app.
+  document.title = screen === "app" ? "RSAT Yard" : "Yard";
 }
 function waitScreen(title, text, claim) {
   $("wait-title").textContent = title;
@@ -2293,7 +2294,7 @@ function loginMode(mode) {
   $("login-form").hidden = mode !== "login";
   $("reset-form").hidden = mode !== "reset";
   $("login-intro").textContent = mode === "reset" ? "Forgot your password? Enter your email to ask an admin for a reset."
-    : "Tank tracking for the RSAT yard. Sign in with your account.";
+    : "Sign in with your account.";
   setMsg($("login-msg"), "");
 }
 const emailKey = e => String(e || "").trim().toLowerCase();
